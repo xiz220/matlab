@@ -30,7 +30,7 @@ class OccupancyGridEnv(gym.Env):
         while num_agents < self.n_agents:
             candidate_x = np.random.randint(0,self.occupancy.shape[1])
             candidate_y = np.random.randint(0,self.occupancy.shape[0])
-            if self.occupancy[-candidate_y,-candidate_x] == 0:
+            if self.occupancy[(self.occupancy.shape[0]-1)-candidate_y, candidate_x] == 0:
                 x.append([candidate_x,candidate_y])
                 num_agents = num_agents + 1
 
@@ -89,7 +89,7 @@ class OccupancyGridEnv(gym.Env):
 
 
         # Add occupancy grid
-        self.ax.imshow(self.occupancy, cmap='gray', vmin=0, vmax=1)
+        self.ax.imshow(1-self.occupancy, cmap='gray', vmin=0, vmax=1)
         plt.show(block=True)
 
     def get_obs(self):
@@ -100,7 +100,7 @@ class OccupancyGridEnv(gym.Env):
 
     def create_occupancy_from_img(self, img):
         occupancy_map = rgb2gray(img)
-        occupancy_map = np.where(occupancy_map > 0.5, 1, 0)
+        occupancy_map = np.where(occupancy_map < 0.5, 1, 0)
         return occupancy_map
 
 
