@@ -112,7 +112,14 @@ class OccupancyGridEnv(gym.Env):
         self.x = candidate_state
 
     def update_sensor_reading_laser(self):
-        """ """
+        """ Updates self.sensor_reading with the new sensor readings.
+        self.sensor_reading[i] holds a numpy array with the ith robot's sensor reading.
+        self
+
+        Laser scanner should return n readings parameterized by an angle theta. The readings should be the distance
+        along the line at that angle to the nearest obstacle, saturated at some sensor radius value."""
+
+        pass
 
     def update_sensor_reading_occupancy(self):
         for i in range(self.n_agents):
