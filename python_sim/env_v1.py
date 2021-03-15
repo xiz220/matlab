@@ -122,6 +122,7 @@ class OccupancyGridEnv(gym.Env):
         pass
 
     def update_sensor_reading_occupancy(self):
+        #TODO fix this
         for i in range(self.n_agents):
             self.sensor_reading[i] = np.zeros((2*self.sensor_occ_radius+1, 2*self.sensor_occ_radius+1))
             for i_x in range(2*self.sensor_occ_radius+1):
