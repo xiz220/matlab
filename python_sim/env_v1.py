@@ -87,7 +87,7 @@ class OccupancyGridEnv(gym.Env):
             self.ax.set_aspect('equal')
 
             # Draw robots
-            self.robot_handle = self.ax.scatter(self.x[:, 0], self.x[:, 1], 20, 'red')
+            self.robot_handle = self.ax.scatter(self.x[:, 0], self.x[:, 1], 10, 'red')
 
         self.robot_handle.set_offsets(self.x)
 
@@ -104,12 +104,25 @@ class OccupancyGridEnv(gym.Env):
         return [self.x, self.sensor_reading]
 
     def update_state(self, action):
-        candidate_state = self.x + action
+        movement_action = action[:,0:2]
+        deposition_action = action[:,2:]
+        candidate_state = self.x + movement_action
         for i in range(self.n_agents):
             if self.is_occupied(candidate_state[i,0], candidate_state[i,1]):
                 candidate_state[i,:] = self.x[i,:]
 
         self.x = candidate_state
+
+        #robot deposition of material
+        self.perform_deposition(deposition_action)
+
+    def perform_deposition(self, deposition_action):
+        deposition_action = np.concatenate((deposition_action,deposition_action),axis=1)
+        deposition_list = self.x[deposition_action==1].reshape((-1,2))
+        for i in range(deposition_list.shape[0]):
+            row_ind,col_ind = self.xy_to_occ_ind(deposition_list[i,0], deposition_list[i,1])
+            self.occupancy[row_ind,col_ind] = 1
+            #print('deposited at: %d, %d' % (deposition_list[i,0], deposition_list[i,1]))
 
     def update_sensor_reading_laser(self):
         """ Updates self.sensor_reading with the new sensor readings.
@@ -138,14 +151,16 @@ class OccupancyGridEnv(gym.Env):
         occupancy_map = np.where(occupancy_map < 0.5, 1, 0)
         return occupancy_map
 
+    def xy_to_occ_ind(self,x,y):
+        return int(y), int(x)
+
     def is_occupied(self,x,y):
-        y_floor = int(y)
-        x_floor = int(x)
 
-        if self.is_ob(x_floor, y_floor):
-            raise ValueError("(%d,%d) is out of bounds" % (x_floor,y_floor) )
+        if self.is_ob(x, y):
+            raise ValueError("(%d,%d) is out of bounds" % (x,y) )
 
-        return self.occupancy[(self.occupancy.shape[0] - 1) - y_floor, x_floor] == 1
+        row_ind, col_ind = self.xy_to_occ_ind(x,y)
+        return self.occupancy[row_ind, col_ind] == 1
 
     def is_ob(self,x,y):
         x = int(x)
