@@ -24,17 +24,19 @@ class OccupancyGridEnv(gym.Env):
 
         self.x = self.init_agents()
         self.sensor_occ_radius = 3
-        self.update_sensor_reading = self.update_sensor_reading_occupancy #self.update_sensor_reading_laser
-        self.sensor_reading = [[] for _ in range(self.n_agents)] # a list of length n_agents
+        self.update_sensor_reading = self.update_sensor_reading_occupancy  # self.update_sensor_reading_laser
+        self.sensor_reading = [[] for _ in range(self.n_agents)]  # a list of length n_agents
+
+        self.laser_angle = np.zeros(self.n_agents)
 
     def init_agents(self):
         num_agents = 0
         x = []
         while num_agents < self.n_agents:
-            candidate_x = np.random.randint(0,self.occupancy.shape[1])
-            candidate_y = np.random.randint(0,self.occupancy.shape[0])
-            if not self.is_occupied(candidate_x,candidate_y):
-                x.append([candidate_x,candidate_y])
+            candidate_x = np.random.randint(0, self.occupancy.shape[1])
+            candidate_y = np.random.randint(0, self.occupancy.shape[0])
+            if not self.is_occupied(candidate_x, candidate_y):
+                x.append([candidate_x, candidate_y])
                 num_agents = num_agents + 1
 
         return np.array(x)
@@ -91,40 +93,38 @@ class OccupancyGridEnv(gym.Env):
 
         self.robot_handle.set_offsets(self.x)
 
-
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
-
         # Add occupancy grid
-        self.ax.imshow(1-self.occupancy, cmap='gray', vmin=0, vmax=1)
-        #plt.show(block=True)
+        self.ax.imshow(1 - self.occupancy, cmap='gray', vmin=0, vmax=1)
+        # plt.show(block=True)
 
     def get_obs(self):
         return [self.x, self.sensor_reading]
 
     def update_state(self, action):
-        movement_action = action[:,0:2]
-        deposition_action = action[:,2:]
+        movement_action = action[:, 0:2]
+        deposition_action = action[:, 2:]
         candidate_state = self.x + movement_action
         for i in range(self.n_agents):
-            if self.is_occupied(candidate_state[i,0], candidate_state[i,1]):
-                candidate_state[i,:] = self.x[i,:]
+            if self.is_occupied(candidate_state[i, 0], candidate_state[i, 1]):
+                candidate_state[i, :] = self.x[i, :]
 
         self.x = candidate_state
 
-        #robot deposition of material
+        # robot deposition of material
         self.perform_deposition(deposition_action)
 
     def perform_deposition(self, deposition_action):
-        deposition_action = np.concatenate((deposition_action,deposition_action),axis=1)
-        deposition_list = self.x[deposition_action==1].reshape((-1,2))
+        deposition_action = np.concatenate((deposition_action, deposition_action), axis=1)
+        deposition_list = self.x[deposition_action == 1].reshape((-1, 2))
         for i in range(deposition_list.shape[0]):
-            row_ind,col_ind = self.xy_to_occ_ind(deposition_list[i,0], deposition_list[i,1])
-            self.occupancy[row_ind,col_ind] = 1
-            #print('deposited at: %d, %d' % (deposition_list[i,0], deposition_list[i,1]))
+            row_ind, col_ind = self.xy_to_occ_ind(deposition_list[i, 0], deposition_list[i, 1])
+            self.occupancy[row_ind, col_ind] = 1
+            # print('deposited at: %d, %d' % (deposition_list[i,0], deposition_list[i,1]))
 
-    def update_sensor_reading_laser(self):
+    def update_sensor_reading_laser(self, laser_resolution=0.1):
         """ Updates self.sensor_reading with the new sensor readings.
         self.sensor_reading[i] holds a numpy array with the ith robot's sensor reading.
         self
@@ -132,45 +132,60 @@ class OccupancyGridEnv(gym.Env):
         Laser scanner should return n readings parameterized by an angle theta. The readings should be the distance
         along the line at that angle to the nearest obstacle, saturated at some sensor radius value."""
 
-        pass
+        for i in range(self.n_agents):
+            cur_dist = 0
+            cur_x = self.x[i]
+            cur_angle = self.laser_angle[i]
+            while not self.is_occupied(cur_x[0], cur_x[1]):
+                cur_x[0] += laser_resolution * np.cos(cur_angle)
+                cur_x[1] += laser_resolution * np.sin(cur_angle)
+                cur_dist += laser_resolution
+                if cur_dist > self.sensor_occ_radius:
+                    cur_dist = self.sensor_occ_radius
+                    break
+            self.sensor_reading[i].append(cur_dist)
+
+        print(self.sensor_reading)
 
     def update_sensor_reading_occupancy(self):
-        #TODO fix this
+        # TODO fix this
         for i in range(self.n_agents):
-            self.sensor_reading[i] = np.zeros((2*self.sensor_occ_radius+1, 2*self.sensor_occ_radius+1))
-            for i_x in range(2*self.sensor_occ_radius+1):
-                for i_y in range(2*self.sensor_occ_radius+1):
-                    if not self.is_ob(self.x[i,0]-self.sensor_occ_radius+i_x,self.x[i,1]-self.sensor_occ_radius+i_y):
-                        self.sensor_reading[i][2*self.sensor_occ_radius - i_y, i_x] = self.is_occupied(self.x[i,0]-self.sensor_occ_radius+i_x,self.x[i,1]-self.sensor_occ_radius+i_y)
+            self.sensor_reading[i] = np.zeros((2 * self.sensor_occ_radius + 1, 2 * self.sensor_occ_radius + 1))
+            for i_x in range(2 * self.sensor_occ_radius + 1):
+                for i_y in range(2 * self.sensor_occ_radius + 1):
+                    if not self.is_ob(self.x[i, 0] - self.sensor_occ_radius + i_x,
+                                      self.x[i, 1] - self.sensor_occ_radius + i_y):
+                        self.sensor_reading[i][2 * self.sensor_occ_radius - i_y, i_x] = self.is_occupied(
+                            self.x[i, 0] - self.sensor_occ_radius + i_x, self.x[i, 1] - self.sensor_occ_radius + i_y)
                     else:
                         self.sensor_reading[i][2 * self.sensor_occ_radius - i_y, i_x] = 1
-
 
     def create_occupancy_from_img(self, img):
         occupancy_map = rgb2gray(img)
         occupancy_map = np.where(occupancy_map < 0.5, 1, 0)
         return occupancy_map
 
-    def xy_to_occ_ind(self,x,y):
+    def xy_to_occ_ind(self, x, y):
         return int(y), int(x)
 
-    def is_occupied(self,x,y):
+    def is_occupied(self, x, y):
 
         if self.is_ob(x, y):
-            raise ValueError("(%d,%d) is out of bounds" % (x,y) )
+            raise ValueError("(%d,%d) is out of bounds" % (x, y))
 
-        row_ind, col_ind = self.xy_to_occ_ind(x,y)
+        row_ind, col_ind = self.xy_to_occ_ind(x, y)
         return self.occupancy[row_ind, col_ind] == 1
 
-    def is_ob(self,x,y):
+    def is_ob(self, x, y):
         x = int(x)
         y = int(y)
-        return not (x>=0 and x<self.occupancy.shape[1] and y>=0 and y<self.occupancy.shape[0])
+        return not (0 <= x < self.occupancy.shape[1] and 0 <= y < self.occupancy.shape[0])
+
 
 if __name__ == "__main__":
     lattice_img_path = "images/candidate_1.png"
     env = OccupancyGridEnv(lattice_img_path=lattice_img_path, n_agents=3)
+    env.update_sensor_reading_laser()
     # print(env.occupancy)
     # plt.imshow(env.occupancy, cmap=plt.get_cmap('gray'), vmin=0, vmax=1)
     # plt.show()
-
