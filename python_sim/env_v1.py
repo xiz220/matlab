@@ -13,6 +13,8 @@ class OccupancyGridEnv(gym.Env):
 
     def __init__(self, lattice_img_path=None, n_agents=3, sensor_model='update_sensor_reading_laser'):
         self.n_agents = n_agents
+        self.max_episode_length=1000
+        self.ep_step = 0
         self.fig = None
 
         if lattice_img_path is not None:
@@ -51,7 +53,10 @@ class OccupancyGridEnv(gym.Env):
 
         obs = self.get_obs()
         reward = 0
-        return obs, reward
+
+        self.ep_step = self.ep_step+1
+        done = self.ep_step >= self.max_episode_length
+        return obs, reward, done
 
     def render(self, mode='human'):
         if mode == 'human':

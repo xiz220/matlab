@@ -16,7 +16,7 @@ def proximity_rule(obs):
 
 action = np.concatenate(((np.random.rand(3, 2) - 0.5) * 4, np.zeros((3, 1))), axis=1)
 
-for i in range(100):
+for i in range(1000):
     #deposition_action = i % 5 == 0
 
     obs, r = env.step(action)
@@ -24,4 +24,5 @@ for i in range(100):
     print(obs)
     deposition_action = proximity_rule(obs)
     action = np.concatenate(((np.random.rand(3, 2) - 0.5) * 4,deposition_action.reshape((-1,1))), axis=1)
-    env.render()
+    if i % 20 == 0:
+        env.render()
