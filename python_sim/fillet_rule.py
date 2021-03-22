@@ -11,6 +11,8 @@ class FilletRule:
         if self.directions is None:
             # initialize directions
             self.directions = np.zeros((len(sensor_reading),2))
+            self.deposit_in_two = np.zeros((len(sensor_reading,)))
+            self.deposit_in_one = np.zeros((len(sensor_reading,)))
 
         deposition_action = []
 
@@ -25,13 +27,25 @@ class FilletRule:
             old_direction = self.directions[i,:]
             angle_between = np.rad2deg(np.arccos(np.dot(new_direction*(1/np.linalg.norm(new_direction),
                                                                     old_direction*(1/np.linalg.norm(old_direction))))))
+            if not self.deposit_in_one[i] and not self.deposit_in_two[i]:
+                self.directions[i,:] = new_direction
 
-            if abs(angle_between)<60:
+            if self.deposit_in_one[i]:
+                self.deposit_in_two[i] = 0
+                self.deposit_in_one[i] = 0
                 deposition_action.append(1)
             else:
                 deposition_action.append(0)
 
-        return np.array(deposition_action)
+            if self.deposit_in_two[i]:
+                self.deposit_in_two[i] = 0
+                self.deposit_in_one[i] = 1
+
+            if abs(angle_between)<60:
+                self.deposit_in_two[i] = 1
+
+
+        return np.concatenate((self.directions,deposition_action), axis=1)
 
 
     def calculate_centroid(self, matrix):
