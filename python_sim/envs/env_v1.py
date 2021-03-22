@@ -13,7 +13,7 @@ class OccupancyGridEnv(gym.Env):
 
     def __init__(self, lattice_img_path=None, n_agents=3, sensor_model='update_sensor_reading_laser'):
         self.n_agents = n_agents
-        self.max_episode_length=10
+        self.max_episode_length=1000
         self.ep_step = 0
         self.fig = None
 
@@ -194,7 +194,8 @@ class OccupancyGridEnv(gym.Env):
     def is_occupied(self, x, y):
 
         if self.is_ob(x, y):
-            raise ValueError("(%d,%d) is out of bounds" % (x, y))
+            return 1
+            #raise ValueError("(%d,%d) is out of bounds" % (x, y))
 
         row_ind, col_ind = self.xy_to_occ_ind(x, y)
         return self.occupancy[row_ind, col_ind] == 1
