@@ -6,37 +6,41 @@ class FilletRule:
         self.directions = None
         self.deposit_in_two = None
         self.deposit_in_one = None
+        self.n_agents = None
 
     def get_action(self, obs):
         """
         Takes in an observation and returns the next action to take to do a wall-following sort of filleting action
-        :param obs: observation list [robot_states (n_agents x 2 np array), senor_readings (list of n_agents (square??) numpy arrays]
+        :param obs: observation dict {'x': robot_states (n_agents x 2 np array), 'sensor_readings': (n_agents x row_dim x col_dim) np array}
         :return: n_agents x 3 np array, where row i represents the i'th robot's: [x_action, y_action, deposition_action]
         """
 
-        sensor_reading = obs[1]
+        sensor_reading = obs['sensor_readings']
 
         if self.directions is None:
             # initialize directions
-            self.directions = np.zeros((len(sensor_reading),2))
-            self.deposit_in_two = np.zeros((len(sensor_reading,)))
-            self.deposit_in_one = np.zeros((len(sensor_reading,)))
+            self.n_agents = sensor_reading.shape[0]
+            self.directions = np.zeros((self.n_agents,2))
+            self.deposit_in_two = np.zeros((self.n_agents,))
+            self.deposit_in_one = np.zeros((self.n_agents,))
 
         deposition_action = []
 
-        for i in range(len(sensor_reading)):
-            current_reading = sensor_reading[i]
+        for i in range(self.n_agents):
+            current_reading = sensor_reading[i,:,:]
 
             #xy centroid, where x is measured from left, y from bottom
             new_centroid = self.calculate_centroid(current_reading)
-            direction_to_centroid = new_centroid - np.floor(current_reading.shape[0])*np.ones((2,))
-            new_direction = np.array([[0, -1], [1, 0]])*direction_to_centroid #90 degree clockwise rotation
+            direction_to_centroid = new_centroid - np.floor((current_reading.shape[0]-1)/2)*np.ones((2,))
+            new_direction = np.matmul(np.array([[0, -1], [1, 0]]),direction_to_centroid.reshape((2,1))).flatten() #90 degree clockwise rotation
 
             old_direction = self.directions[i,:]
-            angle_between = np.rad2deg(np.arccos(np.dot(new_direction*(1/np.linalg.norm(new_direction),
-                                                                    old_direction*(1/np.linalg.norm(old_direction))))))
+            angle_between = np.rad2deg(np.arccos(np.dot(new_direction*(1/np.linalg.norm(new_direction)),
+                                                                    old_direction*(1/np.linalg.norm(old_direction)))))
+            if np.isnan(angle_between).any():
+                angle_between = 0
             if not self.deposit_in_one[i] and not self.deposit_in_two[i]:
-                self.directions[i,:] = new_direction
+                self.directions[i, :] = new_direction
 
             if self.deposit_in_one[i]:
                 self.deposit_in_two[i] = 0
@@ -49,11 +53,11 @@ class FilletRule:
                 self.deposit_in_two[i] = 0
                 self.deposit_in_one[i] = 1
 
-            if abs(angle_between)<60:
+            if abs(angle_between)>60:
                 self.deposit_in_two[i] = 1
 
 
-        return np.concatenate((self.directions,deposition_action), axis=1)
+        return np.concatenate((self.directions,np.array(deposition_action).reshape((self.n_agents,1))), axis=1)
 
 
     def calculate_centroid(self, matrix):
@@ -67,4 +71,9 @@ class FilletRule:
         """
         row_centroid = np.sum(np.multiply(np.sum(matrix,axis=1), np.array(range(matrix.shape[0]))))/np.sum(matrix)
         col_centroid = np.sum(np.multiply(np.sum(matrix,axis=0), np.array(range(matrix.shape[1]))))/np.sum(matrix)
-        return np.array([col_centroid, matrix.shape[0] - row_centroid])
+
+        centroid = np.array([col_centroid, matrix.shape[0] - row_centroid])
+
+        if np.isnan(centroid).any():
+            centroid = np.array([0,0])
+        return centroid

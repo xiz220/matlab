@@ -39,9 +39,11 @@ def render_model(rule, env, video_folder, name_prefix, n_episodes, action_arrows
         count = 0
         obs = video_env.reset()
         while count < n_episodes:
-            #get
-            action = rule.get_action(obs[0]) # can replace with model.predict(obs) if using tf model
-            obs, rewards, dones = video_env.step(action)
+            #remove redundant obs dimensions from vectorized env (??)
+            for key in obs:
+                obs[key] = obs[key][0]
+            action = rule.get_action(obs) # can replace with model.predict(obs) if using tf model
+            obs, rewards, dones, info = video_env.step([action])
             if dones[0]:
                 count = count + 1
                 print(f'Finished episode {count}.')

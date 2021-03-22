@@ -13,9 +13,10 @@ class OccupancyGridEnv(gym.Env):
 
     def __init__(self, lattice_img_path=None, n_agents=3, sensor_model='update_sensor_reading_laser'):
         self.n_agents = n_agents
-        self.max_episode_length=1000
+        self.max_episode_length=10
         self.ep_step = 0
         self.fig = None
+
 
         if lattice_img_path is not None:
             # get lattice image from file
@@ -26,8 +27,11 @@ class OccupancyGridEnv(gym.Env):
 
         self.x = self.init_agents()
         self.sensor_occ_radius = 3
+        self.sensor_reading = np.array([np.zeros((2 * self.sensor_occ_radius + 1, 2 * self.sensor_occ_radius + 1)) for _ in range(self.n_agents)])
         self.update_sensor_reading = getattr(self, sensor_model)  # self.update_sensor_reading_laser
-        self.sensor_reading = [[] for _ in range(self.n_agents)]  # a list of length n_agents
+
+        self._set_observation_space()
+        self.action_space = gym.spaces.Box(shape=(self.n_agents, 3), low=-np.inf, high=np.inf, dtype=np.float32)
 
         self.laser_angle = np.zeros(self.n_agents)
 
@@ -45,6 +49,8 @@ class OccupancyGridEnv(gym.Env):
 
     def reset(self):
         self.init_agents()
+        self.ep_step = 0
+        return self.get_obs()
 
     def step(self, action):
         assert not np.isnan(action).any(), "Actions must not be NaN."
@@ -56,7 +62,8 @@ class OccupancyGridEnv(gym.Env):
 
         self.ep_step = self.ep_step+1
         done = self.ep_step >= self.max_episode_length
-        return obs, reward, done
+        info = {}
+        return obs, reward, done, info
 
     def render(self, mode='human'):
         if mode == 'human':
@@ -105,8 +112,13 @@ class OccupancyGridEnv(gym.Env):
         self.ax.imshow(1 - self.occupancy, cmap='gray', vmin=0, vmax=1)
         # plt.show(block=True)
 
+        if mode == 'rgb_array':
+            s, (width, height) = self.fig.canvas.print_to_buffer()
+            rgb = np.frombuffer(s, np.uint8).reshape((height, width, 4))
+            return rgb
+
     def get_obs(self):
-        return [self.x, self.sensor_reading]
+        return {'x': self.x, 'sensor_readings': self.sensor_reading}
 
     def update_state(self, action):
         movement_action = action[:, 0:2]
@@ -154,8 +166,12 @@ class OccupancyGridEnv(gym.Env):
 
     def update_sensor_reading_occupancy(self):
         # TODO fix this
+        """
+         Updates self.sensor_reading, an n_agents x sensor_reading_rows x sensor_reading_cols numpy array
+        """
+        sensor_reading = [np.zeros((2 * self.sensor_occ_radius + 1, 2 * self.sensor_occ_radius + 1)) for _ in range(self.n_agents)]
         for i in range(self.n_agents):
-            self.sensor_reading[i] = np.zeros((2 * self.sensor_occ_radius + 1, 2 * self.sensor_occ_radius + 1))
+
             for i_x in range(2 * self.sensor_occ_radius + 1):
                 for i_y in range(2 * self.sensor_occ_radius + 1):
                     if not self.is_ob(self.x[i, 0] - self.sensor_occ_radius + i_x,
@@ -164,6 +180,8 @@ class OccupancyGridEnv(gym.Env):
                             self.x[i, 0] - self.sensor_occ_radius + i_x, self.x[i, 1] - self.sensor_occ_radius + i_y)
                     else:
                         self.sensor_reading[i][2 * self.sensor_occ_radius - i_y, i_x] = 1
+
+        self.sensor_reading = np.array(sensor_reading)
 
     def create_occupancy_from_img(self, img):
         occupancy_map = rgb2gray(img)
@@ -186,7 +204,12 @@ class OccupancyGridEnv(gym.Env):
         y = int(y)
         return not (0 <= x < self.occupancy.shape[1] and 0 <= y < self.occupancy.shape[0])
 
-
+    def _set_observation_space(self):
+        """ Set the fixed observation space based on the observation function. """
+        self.observation_space = gym.spaces.Dict({
+            'x': gym.spaces.Box(shape=(self.n_agents,2), low=-np.inf, high=np.inf, dtype=np.float32),
+            'sensor_readings': gym.spaces.Box(shape=(self.n_agents, 2 * self.sensor_occ_radius + 1, 2 * self.sensor_occ_radius + 1),low=-np.inf, high=np.inf, dtype=np.float32)
+        })
 if __name__ == "__main__":
     lattice_img_path = "images/candidate_1.png"
     env = OccupancyGridEnv(lattice_img_path=lattice_img_path, n_agents=3)
