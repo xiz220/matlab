@@ -1,4 +1,4 @@
-from env_v1 import OccupancyGridEnv
+from envs.env_v1 import OccupancyGridEnv
 import numpy as np
 
 env = OccupancyGridEnv(lattice_img_path='images/candidate_3_clean.png', sensor_model="update_sensor_reading_occupancy")
@@ -19,7 +19,7 @@ action = np.concatenate(((np.random.rand(3, 2) - 0.5) * 4, np.zeros((3, 1))), ax
 for i in range(1000):
     #deposition_action = i % 5 == 0
 
-    obs, r = env.step(action)
+    obs, r, done = env.step(action)
 
     print(obs)
     deposition_action = proximity_rule(obs)
