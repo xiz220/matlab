@@ -11,7 +11,7 @@ class OccupancyGridEnv(gym.Env):
     # OpenAI Gym Class Metadata
     metadata = {'render.modes': ['human', 'rgb_array']}
 
-    def __init__(self, lattice_img_path=None, n_agents=3):
+    def __init__(self, lattice_img_path=None, n_agents=3, sensor_model='update_sensor_reading_laser'):
         self.n_agents = n_agents
         self.fig = None
 
@@ -24,7 +24,7 @@ class OccupancyGridEnv(gym.Env):
 
         self.x = self.init_agents()
         self.sensor_occ_radius = 3
-        self.update_sensor_reading = self.update_sensor_reading_occupancy  # self.update_sensor_reading_laser
+        self.update_sensor_reading = getattr(self, sensor_model)  # self.update_sensor_reading_laser
         self.sensor_reading = [[] for _ in range(self.n_agents)]  # a list of length n_agents
 
         self.laser_angle = np.zeros(self.n_agents)
