@@ -4,8 +4,16 @@ class FilletRule:
 
     def __init__(self):
         self.directions = None
+        self.deposit_in_two = None
+        self.deposit_in_one = None
 
     def get_action(self, obs):
+        """
+        Takes in an observation and returns the next action to take to do a wall-following sort of filleting action
+        :param obs: observation list [robot_states (n_agents x 2 np array), senor_readings (list of n_agents (square??) numpy arrays]
+        :return: n_agents x 3 np array, where row i represents the i'th robot's: [x_action, y_action, deposition_action]
+        """
+
         sensor_reading = obs[1]
 
         if self.directions is None:
