@@ -40,7 +40,7 @@ class FilletRule:
             if np.isnan(angle_between).any():
                 angle_between = 0
             if not self.deposit_in_one[i] and not self.deposit_in_two[i]:
-                self.directions[i, :] = new_direction
+                self.directions[i, :] = new_direction/np.linalg.norm(new_direction)
 
             if self.deposit_in_one[i]:
                 self.deposit_in_two[i] = 0
@@ -57,7 +57,7 @@ class FilletRule:
                 self.deposit_in_two[i] = 1
 
 
-        return np.concatenate((self.directions,np.array(deposition_action).reshape((self.n_agents,1))), axis=1)
+        return np.concatenate((self.directions + 1.0*(np.random.rand(self.n_agents,2)-0.5),np.array(deposition_action).reshape((self.n_agents,1))), axis=1)
 
 
     def calculate_centroid(self, matrix):
