@@ -13,7 +13,7 @@ class OccupancyGridEnv(gym.Env):
 
     def __init__(self, lattice_img_path=None, n_agents=3, sensor_model='update_sensor_reading_laser'):
         self.n_agents = n_agents
-        self.max_episode_length=100
+        self.max_episode_length = 500
         self.ep_step = 0
         self.fig = None
 
@@ -215,10 +215,4 @@ class OccupancyGridEnv(gym.Env):
             'x': gym.spaces.Box(shape=(self.n_agents,2), low=-np.inf, high=np.inf, dtype=np.float32),
             'sensor_readings': gym.spaces.Box(shape=(self.n_agents, 2 * self.sensor_occ_radius + 1, 2 * self.sensor_occ_radius + 1),low=-np.inf, high=np.inf, dtype=np.float32)
         })
-if __name__ == "__main__":
-    lattice_img_path = "images/candidate_1.png"
-    env = OccupancyGridEnv(lattice_img_path=lattice_img_path, n_agents=3)
-    env.update_sensor_reading_laser()
-    # print(env.occupancy)
-    # plt.imshow(env.occupancy, cmap=plt.get_cmap('gray'), vmin=0, vmax=1)
-    # plt.show()
+

@@ -1,28 +1,19 @@
 from envs.env_v1 import OccupancyGridEnv
 import numpy as np
+from proximity_rule import ProximityRule
 
-env = OccupancyGridEnv(lattice_img_path='images/candidate_3_clean.png', sensor_model="update_sensor_reading_occupancy")
+n_agents = 10
+render_interval = 1
+env = OccupancyGridEnv(lattice_img_path='images/candidate_3_clean.png', sensor_model="update_sensor_reading_occupancy", n_agents=n_agents)
+rule = ProximityRule()
 
-def proximity_rule(obs):
-    sensor_reading = obs['sensor_reading']
-    deposition_action = []
-    for i in range(len(sensor_reading)):
-        obs = sensor_reading[i]
-        if (obs[2,3]==1 or obs[3,2]==1 or obs[4,3]==1 or obs[3,4]==1):
-            deposition_action.append(1)
-        else:
-            deposition_action.append(0)
-    return np.array(deposition_action)
-
-action = np.concatenate(((np.random.rand(3, 2) - 0.5) * 4, np.zeros((3, 1))), axis=1)
+action = np.concatenate(((np.random.rand(n_agents, 2) - 0.5) * 4, np.zeros((n_agents, 1))), axis=1)
 
 for i in range(1000):
     #deposition_action = i % 5 == 0
 
     obs, r, done, info = env.step(action)
 
-    print(obs)
-    deposition_action = proximity_rule(obs)
-    action = np.concatenate(((np.random.rand(3, 2) - 0.5) * 4,deposition_action.reshape((-1,1))), axis=1)
-    if i % 20 == 0:
+    action = rule.get_action(obs)
+    if i % render_interval == 0:
         env.render()
