@@ -13,7 +13,7 @@ class OccupancyGridEnv(gym.Env):
 
     def __init__(self, lattice_img_path=None, n_agents=3, sensor_model='update_sensor_reading_laser'):
         self.n_agents = n_agents
-        self.max_episode_length=1000
+        self.max_episode_length=100
         self.ep_step = 0
         self.fig = None
 
@@ -103,13 +103,17 @@ class OccupancyGridEnv(gym.Env):
             # Draw robots
             self.robot_handle = self.ax.scatter(self.x[:, 0], self.x[:, 1], 10, 'red')
 
+            # Add occupancy grid
+            self.occ_render = self.ax.imshow(1 - self.occupancy, cmap='gray', vmin=0, vmax=1)
+
         self.robot_handle.set_offsets(self.x)
 
+        # update occupancy grid
+        self.occ_render.set_data(1-self.occupancy)
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
-        # Add occupancy grid
-        self.ax.imshow(1 - self.occupancy, cmap='gray', vmin=0, vmax=1)
+
         # plt.show(block=True)
 
         if mode == 'rgb_array':

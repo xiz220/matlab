@@ -4,6 +4,7 @@ from fillet_rule import FilletRule
 from proximity_rule import ProximityRule
 from stable_baselines.common.vec_env import DummyVecEnv
 import gym
+import cProfile
 import numpy as np
 
 rule = ProximityRule()
@@ -14,6 +15,8 @@ def env_callable():
 
 
 env = DummyVecEnv([env_callable])
+
+#cProfile.run('render_model(rule, env,video_folder=\'videos\',name_prefix=\'video\',n_episodes=1)')
 
 render_model(rule, env,
             video_folder='videos',
