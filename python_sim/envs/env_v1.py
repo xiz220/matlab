@@ -180,10 +180,10 @@ class OccupancyGridEnv(gym.Env):
                 for i_y in range(2 * self.sensor_occ_radius + 1):
                     if not self.is_ob(self.x[i, 0] - self.sensor_occ_radius + i_x,
                                       self.x[i, 1] - self.sensor_occ_radius + i_y):
-                        self.sensor_reading[i][2 * self.sensor_occ_radius - i_y, i_x] = self.is_occupied(
+                        sensor_reading[i][2 * self.sensor_occ_radius - i_y, i_x] = self.is_occupied(
                             self.x[i, 0] - self.sensor_occ_radius + i_x, self.x[i, 1] - self.sensor_occ_radius + i_y)
                     else:
-                        self.sensor_reading[i][2 * self.sensor_occ_radius - i_y, i_x] = 1
+                        sensor_reading[i][2 * self.sensor_occ_radius - i_y, i_x] = 1
 
         self.sensor_reading = np.array(sensor_reading)
 

@@ -3,7 +3,7 @@ import numpy as np
 class ProximityRule:
 
     def __init__(self):
-        pass
+        self.n_agents = None
 
     def get_action(self, obs):
         """
@@ -13,13 +13,14 @@ class ProximityRule:
         """
 
         sensor_reading = obs['sensor_readings']
-
+        if self.n_agents is None:
+            self.n_agents = len(sensor_reading)
         deposition_action = []
-        for i in range(len(sensor_reading)):
+        for i in range(self.n_agents):
             obs = sensor_reading[i,:,:]
             if (obs[2, 3] == 1 or obs[3, 2] == 1 or obs[4, 3] == 1 or obs[3, 4] == 1):
                 deposition_action.append(1)
             else:
                 deposition_action.append(0)
-        return np.concatenate(((np.random.rand(3, 2) - 0.5) * 4, np.array(deposition_action).reshape(3,1)),axis=1)
+        return np.concatenate(((np.random.rand(self.n_agents, 2) - 0.5) * 4, np.array(deposition_action).reshape(self.n_agents,1)), axis=1)
 
