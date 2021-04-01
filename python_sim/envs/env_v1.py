@@ -27,8 +27,9 @@ class OccupancyGridEnv(gym.Env):
 
         self.x = self.init_agents()
         self.sensor_occ_radius = 3
-        self.sensor_reading = np.array([np.zeros((2 * self.sensor_occ_radius + 1, 2 * self.sensor_occ_radius + 1)) for _ in range(self.n_agents)])
         self.update_sensor_reading = getattr(self, sensor_model)  # self.update_sensor_reading_laser
+        self.sensor_reading = None
+        self.update_sensor_reading() #initialize sensor reading to be of correct dimension
 
         self._set_observation_space()
         self.action_space = gym.spaces.Box(shape=(self.n_agents, 3), low=-np.inf, high=np.inf, dtype=np.float32)
@@ -213,6 +214,6 @@ class OccupancyGridEnv(gym.Env):
         """ Set the fixed observation space based on the observation function. """
         self.observation_space = gym.spaces.Dict({
             'x': gym.spaces.Box(shape=(self.n_agents,2), low=-np.inf, high=np.inf, dtype=np.float32),
-            'sensor_readings': gym.spaces.Box(shape=(self.n_agents, 2 * self.sensor_occ_radius + 1, 2 * self.sensor_occ_radius + 1),low=-np.inf, high=np.inf, dtype=np.float32)
+            'sensor_readings': gym.spaces.Box(shape=self.sensor_reading.shape,low=-np.inf, high=np.inf, dtype=np.float32)
         })
 

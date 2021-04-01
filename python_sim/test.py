@@ -1,6 +1,7 @@
 from envs.env_v1 import OccupancyGridEnv
 import numpy as np
 from proximity_rule import ProximityRule
+from fillet_rule import FilletRule
 
 n_agents = 10
 render_interval = 1
