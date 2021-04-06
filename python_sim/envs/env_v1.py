@@ -37,6 +37,8 @@ class OccupancyGridEnv(gym.Env):
         self.laser_angle = np.zeros(self.n_agents)
 
     def init_agents(self):
+        """ Initialize agents to be at random unoccupied positions. This initializes the self.x variable
+        to be a n_agents x 2 np array"""
         num_agents = 0
         x = []
         while num_agents < self.n_agents:
@@ -49,11 +51,25 @@ class OccupancyGridEnv(gym.Env):
         return np.array(x)
 
     def reset(self):
+        """Resets the environment. Resets the agents to random positions, and resets the episode step counter.
+        Returns: a new observation (dictionary: {'x': np array, 'sensor_readings': np array})
+        """
         self.init_agents()
         self.ep_step = 0
         return self.get_obs()
 
     def step(self, action):
+        """Steps the environment forward one timestep, with robots taking actions according to inputs.
+        Input:
+            action:  a n_agents x 3 np array, where the ith row represents
+                the ith agents [x_action, y_action, deposition_action]. Deposition action is binary, whether to
+                 deposit at current position
+         Returns:
+             obs: dictionary observation {'x': np array, 'sensor_readings': np array}
+             reward: scalar, not currently implemented
+             done: whether the environment episode is over
+             info: not currently used
+             """
         assert not np.isnan(action).any(), "Actions must not be NaN."
         self.update_state(action)
         self.update_sensor_reading()
