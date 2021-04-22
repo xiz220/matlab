@@ -11,9 +11,9 @@ class OccupancyGridEnv(gym.Env):
     # OpenAI Gym Class Metadata
     metadata = {'render.modes': ['human', 'rgb_array']}
 
-    def __init__(self, lattice_img_path=None, n_agents=3, sensor_model='update_sensor_reading_laser'):
+    def __init__(self, lattice_img_path=None, n_agents=3, sensor_model='update_sensor_reading_laser', max_episode_length=500):
         self.n_agents = n_agents
-        self.max_episode_length = 500
+        self.max_episode_length = max_episode_length
         self.ep_step = 0
         self.fig = None
 
