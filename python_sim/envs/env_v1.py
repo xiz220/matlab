@@ -146,12 +146,17 @@ class OccupancyGridEnv(gym.Env):
         return {'x': self.x, 'sensor_readings': self.sensor_reading}
 
     def update_state(self, action):
+        self.motion_model='unrestricted'
         movement_action = action[:, 0:2]
         deposition_action = action[:, 2:]
         candidate_state = self.x + movement_action
         for i in range(self.n_agents):
-            if self.is_occupied(candidate_state[i, 0], candidate_state[i, 1]):
-                candidate_state[i, :] = self.x[i, :]
+            if self.motion_model=='restricted':
+                if self.is_occupied(candidate_state[i, 0], candidate_state[i, 1]):
+                    candidate_state[i, :] = self.x[i, :]
+            if self.motion_model=='unrestricted':
+                if self.is_ob(candidate_state[i,0], candidate_state[i,1]):
+                    candidate_state[i, :] = self.x[i, :]
 
         self.x = candidate_state
 
@@ -168,21 +173,23 @@ class OccupancyGridEnv(gym.Env):
             for i in range(2*self.max_deposition_radius + 1):
                 for j in range(2*self.max_deposition_radius + 1):
                     dist.append(np.linalg.norm(np.array([i-self.max_deposition_radius,j-self.max_deposition_radius])))
-                    inds.append([i,j])
+                    inds.append([i-self.max_deposition_radius, j-self.max_deposition_radius])
             self.deposition_sorter = np.argsort(np.array(dist))
             self.deposition_inds = np.array(inds)
 
         deposition_action = np.concatenate((deposition_action, deposition_action), axis=1)
-        deposition_list = self.x[deposition_action == 1].reshape((-1, 2))
-        for i in range(deposition_list.shape[0]):
-            row_ind, col_ind = self.xy_to_occ_ind(deposition_list[i, 0], deposition_list[i, 1])
-            local_occ = self.get_window(self.x[i,0], self.x[i,1], self.max_deposition_radius)
+        deposition_centers_array = self.x[deposition_action == 1].reshape((-1, 2))
+        for i in range(deposition_centers_array.shape[0]):
+            row_ind, col_ind = self.xy_to_occ_ind(deposition_centers_array[i, 0], deposition_centers_array[i, 1])
+            #local_occ = self.get_window(self.x[i,0], self.x[i,1], self.max_deposition_radius)
             for k in range(self.deposition_sorter.shape[0]):
-                x = self.deposition_inds[self.deposition_sorter[k],0] - self.max_deposition_radius + row_ind
-                y = self.deposition_inds[self.deposition_sorter[k],1] - self.max_deposition_radius + col_ind
-                if self.occupancy[x,y] == 0:
-                    self.occupancy[x,y] = 1
-                    break
+                cand_row = self.deposition_inds[self.deposition_sorter[k],0] + row_ind
+                cand_col = self.deposition_inds[self.deposition_sorter[k],1] + col_ind
+                cand_x, cand_y = self.occ_ind_to_xy(cand_row, cand_col)
+                if (not self.is_ob(cand_x,cand_y)) and np.linalg.norm(np.array([row_ind-cand_row, col_ind-cand_col])) < self.max_deposition_radius:
+                    if self.occupancy[cand_row,cand_col] == 0:
+                        self.occupancy[cand_row,cand_col] = 1
+                        break
             # print('deposited at: %d, %d' % (deposition_list[i,0], deposition_list[i,1]))
 
     def update_sensor_reading_laser(self, laser_resolution=0.1):
@@ -225,6 +232,9 @@ class OccupancyGridEnv(gym.Env):
 
     def xy_to_occ_ind(self, x, y):
         return int(y), int(x)
+
+    def occ_ind_to_xy(self, row, col):
+        return col, row
 
     def is_occupied(self, x, y):
 

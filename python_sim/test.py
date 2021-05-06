@@ -14,6 +14,7 @@ action = np.concatenate(((np.random.rand(n_agents, 2) - 0.5) * 4, np.zeros((n_ag
 
 for i in range(1000):
     #deposition_action = i % 5 == 0
+    #action = np.concatenate((np.zeros((n_agents,2)),np.ones((n_agents,1))),axis=1)
     obs, r, done, info = env.step(action)
 
     action = rule.get_action(obs)
