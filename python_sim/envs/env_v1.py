@@ -11,7 +11,13 @@ class OccupancyGridEnv(gym.Env):
     # OpenAI Gym Class Metadata
     metadata = {'render.modes': ['human', 'rgb_array']}
 
-    def __init__(self, lattice_img_path=None, n_agents=3, sensor_model='update_sensor_reading_laser', max_episode_length=500):
+    def __init__(self, lattice_img_path=None,
+                 n_agents=3,
+                 sensor_model='update_sensor_reading_laser',
+                 sensor_occ_radius = 3,
+                 max_episode_length=500,
+                 max_deposition_radius=1,
+                 motion_model='unrestricted'):
         self.n_agents = n_agents
         self.max_episode_length = max_episode_length
         self.ep_step = 0
@@ -25,10 +31,14 @@ class OccupancyGridEnv(gym.Env):
         else:
             raise NotImplementedError('Must provide lattice image to initialize environment')
 
+        self.motion_model = motion_model
+
         self.x = self.init_agents()
-        self.sensor_occ_radius = 3
+        self.sensor_occ_radius = sensor_occ_radius
         self.update_sensor_reading = getattr(self, sensor_model)  # self.update_sensor_reading_laser
         self.sensor_reading = None
+        self.deposition_sorter = None #holds distance vector so as to avoid duplicating this calculation
+        self.max_deposition_radius = max_deposition_radius
         self.update_sensor_reading() #initialize sensor reading to be of correct dimension
 
         self._set_observation_space()
@@ -146,8 +156,12 @@ class OccupancyGridEnv(gym.Env):
         deposition_action = action[:, 2:]
         candidate_state = self.x + movement_action
         for i in range(self.n_agents):
-            if self.is_occupied(candidate_state[i, 0], candidate_state[i, 1]):
-                candidate_state[i, :] = self.x[i, :]
+            if self.motion_model=='restricted':
+                if self.is_occupied(candidate_state[i, 0], candidate_state[i, 1]):
+                    candidate_state[i, :] = self.x[i, :]
+            if self.motion_model=='unrestricted':
+                if self.is_ob(candidate_state[i,0], candidate_state[i,1]):
+                    candidate_state[i, :] = self.x[i, :]
 
         self.x = candidate_state
 
@@ -155,11 +169,32 @@ class OccupancyGridEnv(gym.Env):
         self.perform_deposition(deposition_action)
 
     def perform_deposition(self, deposition_action):
+        # when self.max_deposition_radius is 1, this reduces to "only deposit in your current cell"
+
+        #generate list of distances to the other indices in the local occupancy grid area
+        if self.deposition_sorter is None:
+            dist = []
+            inds = []
+            for i in range(2*self.max_deposition_radius + 1):
+                for j in range(2*self.max_deposition_radius + 1):
+                    dist.append(np.linalg.norm(np.array([i-self.max_deposition_radius,j-self.max_deposition_radius])))
+                    inds.append([i-self.max_deposition_radius, j-self.max_deposition_radius])
+            self.deposition_sorter = np.argsort(np.array(dist))
+            self.deposition_inds = np.array(inds)
+
         deposition_action = np.concatenate((deposition_action, deposition_action), axis=1)
-        deposition_list = self.x[deposition_action == 1].reshape((-1, 2))
-        for i in range(deposition_list.shape[0]):
-            row_ind, col_ind = self.xy_to_occ_ind(deposition_list[i, 0], deposition_list[i, 1])
-            self.occupancy[row_ind, col_ind] = 1
+        deposition_centers_array = self.x[deposition_action == 1].reshape((-1, 2))
+        for i in range(deposition_centers_array.shape[0]):
+            row_ind, col_ind = self.xy_to_occ_ind(deposition_centers_array[i, 0], deposition_centers_array[i, 1])
+            #local_occ = self.get_window(self.x[i,0], self.x[i,1], self.max_deposition_radius)
+            for k in range(self.deposition_sorter.shape[0]):
+                cand_row = self.deposition_inds[self.deposition_sorter[k],0] + row_ind
+                cand_col = self.deposition_inds[self.deposition_sorter[k],1] + col_ind
+                cand_x, cand_y = self.occ_ind_to_xy(cand_row, cand_col)
+                if (not self.is_ob(cand_x,cand_y)) and np.linalg.norm(np.array([row_ind-cand_row, col_ind-cand_col])) < self.max_deposition_radius:
+                    if self.occupancy[cand_row,cand_col] == 0:
+                        self.occupancy[cand_row,cand_col] = 1
+                        break
             # print('deposited at: %d, %d' % (deposition_list[i,0], deposition_list[i,1]))
 
     def update_sensor_reading_laser(self, laser_resolution=0.1):
@@ -186,21 +221,12 @@ class OccupancyGridEnv(gym.Env):
         print(self.sensor_reading)
 
     def update_sensor_reading_occupancy(self):
-        # TODO fix this
         """
          Updates self.sensor_reading, an n_agents x sensor_reading_rows x sensor_reading_cols numpy array
         """
         sensor_reading = [np.zeros((2 * self.sensor_occ_radius + 1, 2 * self.sensor_occ_radius + 1)) for _ in range(self.n_agents)]
         for i in range(self.n_agents):
-
-            for i_x in range(2 * self.sensor_occ_radius + 1):
-                for i_y in range(2 * self.sensor_occ_radius + 1):
-                    if not self.is_ob(self.x[i, 0] - self.sensor_occ_radius + i_x,
-                                      self.x[i, 1] - self.sensor_occ_radius + i_y):
-                        sensor_reading[i][2 * self.sensor_occ_radius - i_y, i_x] = self.is_occupied(
-                            self.x[i, 0] - self.sensor_occ_radius + i_x, self.x[i, 1] - self.sensor_occ_radius + i_y)
-                    else:
-                        sensor_reading[i][2 * self.sensor_occ_radius - i_y, i_x] = 1
+            sensor_reading[i] = self.get_window(self.x[i,0], self.x[i,1],self.sensor_occ_radius)
 
         self.sensor_reading = np.array(sensor_reading)
 
@@ -211,6 +237,9 @@ class OccupancyGridEnv(gym.Env):
 
     def xy_to_occ_ind(self, x, y):
         return int(y), int(x)
+
+    def occ_ind_to_xy(self, row, col):
+        return col, row
 
     def is_occupied(self, x, y):
 
@@ -233,3 +262,15 @@ class OccupancyGridEnv(gym.Env):
             'sensor_readings': gym.spaces.Box(shape=self.sensor_reading.shape,low=-np.inf, high=np.inf, dtype=np.float32)
         })
 
+    def get_window(self, x, y, radius=2):
+        window = np.zeros((radius*2+1,radius*2+1))
+        for i_x in range(2 * radius + 1):
+                for i_y in range(2 * radius + 1):
+                    if not self.is_ob(x - radius + i_x,
+                                      y -  radius + i_y):
+                        window[2 * radius - i_y, i_x] = self.is_occupied(
+                            x - radius + i_x, y - radius + i_y)
+                    else:
+                        window[2 * radius - i_y, i_x] = 1
+
+        return window
