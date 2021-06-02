@@ -11,9 +11,13 @@ class OccupancyGridEnv(gym.Env):
     # OpenAI Gym Class Metadata
     metadata = {'render.modes': ['human', 'rgb_array']}
 
-    def __init__(self, lattice_img_path=None, n_agents=3, sensor_model='update_sensor_reading_laser',
+    def __init__(self, lattice_img_path=None,
+                 n_agents=3,
+                 sensor_model='update_sensor_reading_laser',
+                 sensor_occ_radius = 3,
                  max_episode_length=500,
-                 max_deposition_radius=1):
+                 max_deposition_radius=1,
+                 motion_model='unrestricted'):
         self.n_agents = n_agents
         self.max_episode_length = max_episode_length
         self.ep_step = 0
@@ -27,8 +31,10 @@ class OccupancyGridEnv(gym.Env):
         else:
             raise NotImplementedError('Must provide lattice image to initialize environment')
 
+        self.motion_model = motion_model
+
         self.x = self.init_agents()
-        self.sensor_occ_radius = 3
+        self.sensor_occ_radius = sensor_occ_radius
         self.update_sensor_reading = getattr(self, sensor_model)  # self.update_sensor_reading_laser
         self.sensor_reading = None
         self.deposition_sorter = None #holds distance vector so as to avoid duplicating this calculation
@@ -146,7 +152,6 @@ class OccupancyGridEnv(gym.Env):
         return {'x': self.x, 'sensor_readings': self.sensor_reading}
 
     def update_state(self, action):
-        self.motion_model='unrestricted'
         movement_action = action[:, 0:2]
         deposition_action = action[:, 2:]
         candidate_state = self.x + movement_action
