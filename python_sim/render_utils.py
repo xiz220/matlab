@@ -53,7 +53,7 @@ def render_model(rule, env, video_folder, name_prefix, n_episodes, action_arrows
                 ws_dir = Path(__file__).resolve().parents[0]
                 im_dir = ws_dir / 'images'
                 filepath, filename = clean_file_name('result.png', im_dir)
-                mpimg.imsave('images/'+filename, 1-video_env.get_attr('occupancy',0)[0])
+                mpimg.imsave('images/'+filename, 1-video_env.get_attr('occupancy',0)[0], cmap="gray")
                 count = count + 1
                 print(f'Finished episode {count}.')
         video_env.close_video_recorder()
