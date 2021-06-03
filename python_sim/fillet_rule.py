@@ -75,5 +75,5 @@ def calculate_centroid(matrix):
     centroid = np.array([col_centroid, matrix.shape[0] - row_centroid])
 
     if np.isnan(centroid).any():
-        centroid = np.array([0,0])
+        centroid = np.floor((matrix.shape[0]-1)/2)*np.ones((2,))
     return centroid
