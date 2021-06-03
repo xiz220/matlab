@@ -2,8 +2,10 @@ import gym
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
-
-from utils import rgb2gray
+import scipy.misc
+from utils import rgb2gray, clean_file_name
+from os import path
+from pathlib import Path
 
 
 class OccupancyGridEnv(gym.Env):
@@ -146,9 +148,12 @@ class OccupancyGridEnv(gym.Env):
         return {'x': self.x, 'sensor_readings': self.sensor_reading}
 
     def update_state(self, action):
-        self.motion_model='unrestricted'
-        movement_action = action[:, 0:2]
+        self.motion_model = 'unrestricted'
         deposition_action = action[:, 2:]
+        # robot deposition of material
+        self.perform_deposition(deposition_action)
+
+        movement_action = action[:, 0:2]
         candidate_state = self.x + movement_action
         for i in range(self.n_agents):
             if self.motion_model=='restricted':
@@ -160,8 +165,7 @@ class OccupancyGridEnv(gym.Env):
 
         self.x = candidate_state
 
-        # robot deposition of material
-        self.perform_deposition(deposition_action)
+
 
     def perform_deposition(self, deposition_action):
         # when self.max_deposition_radius is 1, this reduces to "only deposit in your current cell"
