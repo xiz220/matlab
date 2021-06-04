@@ -19,9 +19,11 @@ You can also install manually. This repository requires python 3 and the followi
 ### Running Experiments
 
 To start a live rendering of the environment, run `run_experiment.py` in testing mode:
+
 ```run_experiment.py -exp_name your_exp_name_here -cfg path_to_cfg_file -test```
 
 To record a video of the environment, run `run_experiment.py` without the testing flag:
+
 ```run_experiment.py -exp_name your_exp_name_here -cfg path_to_cfg_file.toml ```
 
 This will create a new folder in the `experiments` directory with the name `your_exp_name_here_#` with an integer added 
