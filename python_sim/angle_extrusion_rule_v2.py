@@ -30,24 +30,9 @@ class AngleExtrusionRule_v2:
 
         Returns 
         -------
-        Integer:
-        Quadrant number of where the wall/material was detected
+        numpy (1,2) array:
+        unnormalized vector from the robot position to the centroid of the observation
         '''
-        
-        if ((obs_grid[2,3]==1 or obs_grid[2,4]==1 or obs_grid[3,4]==1) and 
-                (obs_grid[1,3]==1 or obs_grid[1,4]==1 or obs_grid[1,5]==1 or obs_grid[2,5]==1 or obs_grid[3,5]==1)):
-            self.jump_direction = 3 #diagnolly opposit to quadrant 1
-        elif ((obs_grid[2,2]==1 or obs_grid[2,3]==1 or obs_grid[3,2]==1) and 
-                (obs_grid[1,3]==1 or obs_grid[1,1]==1 or obs_grid[1,2]==1 or obs_grid[2,1]==1 or obs_grid[3,1]==1)):
-            self.jump_direction = 4 #diagnollay opposite to quadrant 2
-        elif ((obs_grid[3,2]==1 or obs_grid[4,2]==1 or obs_grid[4,3]==1) and 
-                (obs_grid[3,1]==1 or obs_grid[4,1]==1 or obs_grid[5,1]==1 or obs_grid[5,2]==1 or obs_grid[5,3]==1)):
-            self.jump_direction = 1 #diagnolly opposite to quadrant 3
-        elif ((obs_grid[3,4]==1 or obs_grid[4,4]==1 or obs_grid[4,3]==1) and 
-                (obs_grid[5,3]==1 or obs_grid[5,4]==1 or obs_grid[5,5]==1 or obs_grid[4,5]==1 or obs_grid[3,5]==1)):
-            self.jump_direction = 2 #diagnolly opposite to quadrant 4
-        else :
-            self.jump_direction = 0
 
         centroid = calculate_centroid(obs_grid)
         direction_to_centroid = centroid - np.floor((obs_grid.shape[0]-1)/2)*np.ones((2,))
