@@ -1,0 +1,15 @@
+[env]
+lattice_img_path='images/candidate_3_clean.png'
+sensor_model="update_sensor_reading_occupancy"
+n_agents=10
+max_deposition_radius=3
+max_episode_length=20
+
+[rule]
+rule_file = "angle_extrusion_rule_v2"
+rule_name = "AngleExtrusionRule_v2"
+
+[rule_args]
+turn_delay_max=5
+slowdown_alpha=0.5
+angle=45

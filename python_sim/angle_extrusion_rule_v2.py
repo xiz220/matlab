@@ -4,7 +4,7 @@ from fillet_rule import calculate_centroid
 
 class AngleExtrusionRule_v2:
 
-    def __init__(self, line_length=10):
+    def __init__(self, line_length=10, turn_delay_max=5, slowdown_alpha=0.5, angle=45):
         self.n_agents = None
         self.deposition = None
         self.actions_list = None
@@ -13,13 +13,13 @@ class AngleExtrusionRule_v2:
         self.line_length = line_length
         self.jump_direction = 1
         self.random_jump = 0
-        self.angle = 38
+        self.angle = angle
         self.radian = np.deg2rad(self.angle)
         self.blinders = None
         self.turn_delay = None
         self.turn_delay_actions = None
-        self.turn_delay_max = 5
-        self.slowdown_alpha = 0.7
+        self.turn_delay_max = turn_delay_max
+        self.slowdown_alpha = slowdown_alpha
     
     def check_jump_direction(self, obs_grid):
         '''

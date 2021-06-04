@@ -20,7 +20,7 @@ from gym.wrappers.monitoring import video_recorder
 from stable_baselines.common.vec_env import VecVideoRecorder
 
 
-def render_model(rule, env, video_folder, name_prefix, n_episodes, action_arrows=False):
+def render_model(rule, env, video_folder, name_prefix, n_episodes, save_image=True):
     """
     Save a single video of the model in the environment over n episodes. If a
     video of the same name already exists in the target folder, append a unique
@@ -48,12 +48,12 @@ def render_model(rule, env, video_folder, name_prefix, n_episodes, action_arrows
                 obs[key] = obs[key][0]
             action = rule.get_action(obs) # can replace with model.predict(obs) if using tf model
             obs, rewards, dones, info = video_env.step([action])
-            if dones[0]:
+            if dones[0] and save_image:
                 #import pdb; pdb.set_trace()
                 ws_dir = Path(__file__).resolve().parents[0]
-                im_dir = ws_dir / 'images'
-                filepath, filename = clean_file_name('result.png', im_dir)
-                mpimg.imsave('images/'+filename, 1-video_env.get_attr('occupancy',0)[0], cmap="gray")
+                im_dir = Path(video_folder)
+                filepath, _ = clean_file_name('result.png', im_dir)
+                mpimg.imsave(str(filepath), 1-video_env.get_attr('occupancy',0)[0], cmap="gray",origin='lower')
                 count = count + 1
                 print(f'Finished episode {count}.')
         video_env.close_video_recorder()
