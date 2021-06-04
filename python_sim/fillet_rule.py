@@ -30,7 +30,7 @@ class FilletRule:
             current_reading = sensor_reading[i,:,:]
 
             #xy centroid, where x is measured from left, y from bottom
-            new_centroid = self.calculate_centroid(current_reading)
+            new_centroid = calculate_centroid(current_reading)
             direction_to_centroid = new_centroid - np.floor((current_reading.shape[0]-1)/2)*np.ones((2,))
             new_direction = np.matmul(np.array([[0, -1], [1, 0]]),direction_to_centroid.reshape((2,1))).flatten() #90 degree clockwise rotation
 
@@ -60,20 +60,20 @@ class FilletRule:
         return np.concatenate((self.directions + 1.0*(np.random.rand(self.n_agents,2)-0.5),np.array(deposition_action).reshape((self.n_agents,1))), axis=1)
 
 
-    def calculate_centroid(self, matrix):
-        """"
-        Arguments:
-            matrix : nxn numpy array of occupancy grid sensor readings, where n must be odd
+def calculate_centroid(matrix):
+    """"
+    Arguments:
+        matrix : nxn numpy array of occupancy grid sensor readings, where n must be odd
 
-        Returns:
-            the [x,y] centroid of the matrix weighted by sensor value (binary), where x is measured from the left side of
-            the matrix, and y is measured up from the bottom of the matrix
-        """
-        row_centroid = np.sum(np.multiply(np.sum(matrix,axis=1), np.array(range(matrix.shape[0]))))/np.sum(matrix)
-        col_centroid = np.sum(np.multiply(np.sum(matrix,axis=0), np.array(range(matrix.shape[1]))))/np.sum(matrix)
+    Returns:
+        the [x,y] centroid of the matrix weighted by sensor value (binary), where x is measured from the left side of
+        the matrix, and y is measured up from the bottom of the matrix
+    """
+    row_centroid = np.sum(np.multiply(np.sum(matrix,axis=1), np.array(range(matrix.shape[0]))))/np.sum(matrix)
+    col_centroid = np.sum(np.multiply(np.sum(matrix,axis=0), np.array(range(matrix.shape[1]))))/np.sum(matrix)
 
-        centroid = np.array([col_centroid, matrix.shape[0] - row_centroid])
+    centroid = np.array([col_centroid, matrix.shape[0] - row_centroid])
 
-        if np.isnan(centroid).any():
-            centroid = np.array([0,0])
-        return centroid
+    if np.isnan(centroid).any():
+        centroid = np.floor((matrix.shape[0]-1)/2)*np.ones((2,))
+    return centroid
