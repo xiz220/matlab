@@ -20,18 +20,18 @@ You can also install manually. This repository requires python 3 and the followi
 
 To start a live rendering of the environment, run `run_experiment.py` in testing mode:
 
-```run_experiment.py -exp_name your_exp_name_here -cfg path_to_cfg_file -test```
+```python run_experiment.py -exp_name your_exp_name_here -cfg path_to_cfg_file -test```
 
 To record a video of the environment, run `run_experiment.py` without the testing flag:
 
-```run_experiment.py -exp_name your_exp_name_here -cfg path_to_cfg_file.toml ```
+```python run_experiment.py -exp_name your_exp_name_here -cfg path_to_cfg_file.toml ```
 
 This will create a new folder in the `experiments` directory with the name `your_exp_name_here_#` with an integer added 
 to the end to differentiate it. It will run the experiment specified in the parameters toml at `path_to_cfg_file.toml`,
 save a video recording and a final image to the experiment folder.
 
 Example:
-```run_experiment.py -exp_name test_experiment -cfg cfg/test.toml```
+```python run_experiment.py -exp_name test_experiment -cfg cfg/test.toml```
 
 
 ### Environment
