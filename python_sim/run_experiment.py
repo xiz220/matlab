@@ -31,7 +31,12 @@ def main():
     if args.test:  # live rendering
         # create environment
         env = OccupancyGridEnv(**env_cfg)
-
+        done = False
+        obs = env.reset()
+        while not done:
+            action = rule.get_action(obs)
+            obs, r, done, info = env.step(action)
+            env.render()
     else:  # recording a video
 
         experiment_root_dir = Path(__file__).resolve().parents[0] / 'experiments'
