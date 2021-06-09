@@ -72,7 +72,7 @@ def calculate_centroid(matrix):
     row_centroid = np.sum(np.multiply(np.sum(matrix,axis=1), np.array(range(matrix.shape[0]))))/np.sum(matrix)
     col_centroid = np.sum(np.multiply(np.sum(matrix,axis=0), np.array(range(matrix.shape[1]))))/np.sum(matrix)
 
-    centroid = np.array([col_centroid, matrix.shape[0] - row_centroid])
+    centroid = np.array([col_centroid, matrix.shape[0] - row_centroid - 1])
 
     if np.isnan(centroid).any():
         centroid = np.floor((matrix.shape[0]-1)/2)*np.ones((2,))
