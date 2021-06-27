@@ -146,6 +146,11 @@ class OccupancyGridEnv(gym.Env):
             # Add occupancy grid
             self.occ_render = self.ax.imshow(1 - self.occupancy, cmap='gray', vmin=0, vmax=1)
 
+            # Draw scale line
+            self.ax.plot([50, 50+1000/self.image_scale], [25,25])
+            self.ax.text(x=1,y=22,s='1 mm',fontsize=4,color='tab:blue')
+            self.ax.text(x=1,y=5,s='timescale: 20x',fontsize=4,color='tab:blue')
+
         self.robot_handle.set_offsets(self.x)
 
         # update occupancy grid
