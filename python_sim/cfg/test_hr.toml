@@ -1,7 +1,7 @@
 [env]
-lattice_img_path='images/candidate_3_clean.png'
+lattice_img_path='images/candidate_3_high_res_a.png'
+image_scale=10 #number of microns per pixel
 sensor_model="update_sensor_reading_occupancy"
-image_scale=25 #number of microns per pixel
 sensor_occ_radius = 75 #radius for the local occupancy grid sensor
 n_agents=10
 max_deposition_radius=1000 #max distance from the robot that it can deposit material

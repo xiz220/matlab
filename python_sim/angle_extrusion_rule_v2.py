@@ -72,7 +72,7 @@ class AngleExtrusionRule_v2:
                 if (jump_dir == np.array([0,0])).all():
 
                     #move in random direction, take blinders off, do not deposit material
-                    self.actions_list[i] = (np.random.rand(2)-0.5)*10
+                    self.actions_list[i] = (np.random.rand(2)-0.5)*100
                     self.prev_jump[i] = self.actions_list[i]*0.2
                     self.blinders[i] = 0
                     deposition_action.append(0)
@@ -80,7 +80,7 @@ class AngleExtrusionRule_v2:
 
                     #normalize
                     jump_dir = jump_dir/np.linalg.norm(jump_dir)
-                    dir_diff = self.prev_jump[i] - jump_dir
+                    dir_diff = (1/10)*self.prev_jump[i] - jump_dir
                     # if the difference between old mvmt dir and new movement dir is above threshold and the blinders
                     # are off
                     if np.linalg.norm(dir_diff) > threshold and self.blinders[i] == 0:
@@ -97,9 +97,9 @@ class AngleExtrusionRule_v2:
                         snapped_jump_dir = cand_vectors[np.argmin(dot_products),:]
 
                         # move in the direction opposite the new disturbance
-                        self.actions_list[i] = snapped_jump_dir*self.slowdown_alpha
+                        self.actions_list[i] = 10*snapped_jump_dir*self.slowdown_alpha
                         deposition_action.append(1)
-                        self.prev_jump[i] = snapped_jump_dir
+                        self.prev_jump[i] = 10*snapped_jump_dir
 
                         #import pdb; pdb.set_trace()
 
