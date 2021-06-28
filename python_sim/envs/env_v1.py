@@ -144,7 +144,8 @@ class OccupancyGridEnv(gym.Env):
             self.robot_handle = self.ax.scatter(self.x[:, 0], self.x[:, 1], 10, 'red')
 
             # Add occupancy grid
-            self.occ_render = self.ax.imshow(1 - self.occupancy, cmap='gray', vmin=0, vmax=1)
+            occ_data = (1-((self.occupancy==1).astype('float')+0.7*(self.occupancy==2).astype('float')))
+            self.occ_render = self.ax.imshow(occ_data, cmap='gray', vmin=0, vmax=1)
 
             # Draw scale line
             self.ax.plot([50, 50+1000/self.image_scale], [25,25])
@@ -154,7 +155,8 @@ class OccupancyGridEnv(gym.Env):
         self.robot_handle.set_offsets(self.x)
 
         # update occupancy grid
-        self.occ_render.set_data(1-self.occupancy)
+        occ_data = (1-((self.occupancy==1).astype('float')+0.7*(self.occupancy==2).astype('float')))
+        self.occ_render.set_data(occ_data)
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
@@ -214,7 +216,7 @@ class OccupancyGridEnv(gym.Env):
                     cand_x, cand_y = self.occ_ind_to_xy(cand_row, cand_col)
                     if (not self.is_ob(cand_x,cand_y)) and np.linalg.norm(np.array([row_ind-cand_row, col_ind-cand_col])) < self.max_deposition_radius:
                         if self.occupancy[cand_row,cand_col] == 0:
-                            self.occupancy[cand_row,cand_col] = 1
+                            self.occupancy[cand_row,cand_col] = 2
                             break
             # print('deposited at: %d, %d' % (deposition_list[i,0], deposition_list[i,1]))
 
@@ -269,7 +271,7 @@ class OccupancyGridEnv(gym.Env):
             #raise ValueError("(%d,%d) is out of bounds" % (x, y))
 
         row_ind, col_ind = self.xy_to_occ_ind(x, y)
-        return self.occupancy[row_ind, col_ind] == 1
+        return self.occupancy[row_ind, col_ind] >= 1
 
     def is_ob(self, x, y):
         x = int(x)
