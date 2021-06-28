@@ -146,7 +146,7 @@ class OccupancyGridEnv(gym.Env):
             self.robot_handle = self.ax.scatter(self.x[:, 0], self.x[:, 1], 10, 'red')
 
             # Add occupancy grid
-            occ_data = (1-((self.occupancy==1).astype('float')+0.7*(self.occupancy==2).astype('float')))# + 0.2*(self.occupancy==2).astype('int')
+            occ_data = (1-((self.occupancy==1).astype('float')+0.7*(self.occupancy==2).astype('float')))
             self.occ_render = self.ax.imshow(occ_data, cmap='gray', vmin=0, vmax=1)
 
             # Draw scale line
@@ -157,7 +157,7 @@ class OccupancyGridEnv(gym.Env):
         self.robot_handle.set_offsets(self.x)
 
         # update occupancy grid
-        occ_data = (1-((self.occupancy==1).astype('float')+0.7*(self.occupancy==2).astype('float')))# + 0.2*(self.occupancy==2).astype('int')
+        occ_data = (1-((self.occupancy==1).astype('float')+0.7*(self.occupancy==2).astype('float')))
         self.occ_render.set_data(occ_data)
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
