@@ -111,7 +111,7 @@ class AngleExtrusionRule_v2:
 
             else:
                 self.turn_delay[i] = self.turn_delay[i] - 1
-                self.actions_list[i] = self.turn_delay_actions[i,:]
+                self.actions_list[i] = self.turn_delay_actions[i,:]*self.slowdown_alpha
                 deposition_action.append(1)
                 #import pdb; pdb.set_trace()
 
