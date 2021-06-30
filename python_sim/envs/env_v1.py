@@ -44,7 +44,7 @@ class OccupancyGridEnv(gym.Env):
         self.sensor_reading = None
         self.deposition_sorter = None #holds distance vector so as to avoid duplicating this calculation
         self.max_deposition_radius = int(max_deposition_radius/self.image_scale)
-        self.deposition_rate = int(150*5/(self.image_scale**2)) #theoretically 5 um^2/s (at 1um thick)
+        self.deposition_rate = int(50*5/(self.image_scale**2)) #theoretically 5 um^2/s (at 1um thick) at 50x speedup
         if self.max_deposition_radius < 1 or self.sensor_occ_radius < 1 or self.deposition_rate < 1:
             print("IMG SCALE SEEMS OFF: deposition or sensor radius less than 1")
 
@@ -150,7 +150,7 @@ class OccupancyGridEnv(gym.Env):
             # Draw scale line
             self.ax.plot([50, 50+1000/self.image_scale], [25,25])
             self.ax.text(x=1,y=22,s='1 mm',fontsize=4,color='tab:blue')
-            self.ax.text(x=1,y=5,s='timescale: 20x',fontsize=4,color='tab:blue')
+            self.ax.text(x=1,y=5,s='timescale: 50x',fontsize=4,color='tab:blue')
 
         self.robot_handle.set_offsets(self.x)
 

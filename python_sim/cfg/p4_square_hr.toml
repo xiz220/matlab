@@ -1,0 +1,19 @@
+[env]
+lattice_img_path='images/candidate_3_high_res_a.png'
+image_scale=10 #number of microns per pixel
+sensor_model="update_sensor_reading_occupancy"
+sensor_occ_radius = 75 #radius for the local occupancy grid sensor
+n_agents=10
+max_deposition_radius=1000 #max distance from the robot that it can deposit material
+max_episode_length=400
+motion_model='unrestricted' #'unrestricted' or 'restricted' -- unrestricted means robots can travel through material
+                            # restricted means they cannot
+
+[rule]
+rule_file = "angle_extrusion_rule_v2"
+rule_name = "AngleExtrusionRule_v2"
+
+[rule_args]
+turn_delay_max=5
+slowdown_alpha=0.5
+angle=45
