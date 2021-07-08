@@ -113,6 +113,8 @@ class AngleExtrusionRule_v2:
                 self.turn_delay[i] = self.turn_delay[i] - 1
                 self.actions_list[i] = self.turn_delay_actions[i,:]*self.slowdown_alpha
                 deposition_action.append(1)
+                if hasattr(self,'env') and self.turn_delay[i] == 0:
+                    self.env.set_flag(x[i,0],x[i,1])
                 #import pdb; pdb.set_trace()
 
         # action = np.array(self.actions_list)
@@ -123,6 +125,7 @@ class AngleExtrusionRule_v2:
         return np.concatenate((np.array(self.actions_list), np.array(deposition_action).reshape(self.n_agents, 1)),
                               axis=1)
             
-            
+    def set_env(self, env):
+        self.env = env
             
 

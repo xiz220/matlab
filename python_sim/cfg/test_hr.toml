@@ -12,6 +12,7 @@ motion_model='unrestricted' #'unrestricted' or 'restricted' -- unrestricted mean
 [rule]
 rule_file = "angle_extrusion_rule_v2"
 rule_name = "AngleExtrusionRule_v2"
+include_env = true
 
 [rule_args]
 turn_delay_max=5

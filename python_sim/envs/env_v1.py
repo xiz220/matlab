@@ -54,6 +54,8 @@ class OccupancyGridEnv(gym.Env):
         self.action_space = gym.spaces.Box(shape=(self.n_agents, 3), low=-np.inf, high=np.inf, dtype=np.float32)
 
         self.laser_angle = np.zeros(self.n_agents)
+
+        self.flags = []
         print('deposition radius: ', self.max_deposition_radius,' pixels')
         print('deposition rate: ', self.deposition_rate,' pixels/timestep')
         print('sensor radius: ', self.sensor_occ_radius,' pixels')
@@ -152,11 +154,17 @@ class OccupancyGridEnv(gym.Env):
             self.ax.text(x=1,y=22,s='1 mm',fontsize=4,color='tab:blue')
             self.ax.text(x=1,y=5,s='timescale: 50x',fontsize=4,color='tab:blue')
 
+            # Draw flags
+            self.flag_handle = self.ax.scatter(None, None, 8, alpha=0.25, c='green')
+
         self.robot_handle.set_offsets(self.x)
 
         # update occupancy grid
         occ_data = (1-((self.occupancy==1).astype('float')+0.7*(self.occupancy==2).astype('float')))
         self.occ_render.set_data(occ_data)
+
+        if len(self.flags) > 0:
+            self.flag_handle.set_offsets(np.array(self.flags))
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
@@ -167,6 +175,9 @@ class OccupancyGridEnv(gym.Env):
             s, (width, height) = self.fig.canvas.print_to_buffer()
             rgb = np.frombuffer(s, np.uint8).reshape((height, width, 4))
             return rgb
+
+    def set_flag(self, x, y):
+        self.flags.append([x,y])
 
     def get_obs(self):
         return {'x': self.x, 'sensor_readings': self.sensor_reading}
