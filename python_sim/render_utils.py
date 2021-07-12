@@ -49,11 +49,11 @@ def render_model(rule, env, video_folder, name_prefix, n_episodes, save_image=Tr
             action = rule.get_action(obs) # can replace with model.predict(obs) if using tf model
             obs, rewards, dones, info = video_env.step([action])
             if dones[0] and save_image:
-                #import pdb; pdb.set_trace()
-                ws_dir = Path(__file__).resolve().parents[0]
                 im_dir = Path(video_folder)
                 filepath, _ = clean_file_name('result.png', im_dir)
-                mpimg.imsave(str(filepath), 1-video_env.get_attr('occupancy',0)[0], cmap="gray",origin='lower')
+                occ = video_env.get_attr('occupancy',0)[0]
+                occ_display = (1-((occ==1).astype('float')+0.7*(occ==2).astype('float')))
+                mpimg.imsave(str(filepath), occ_display, cmap="gray",origin='lower')
                 count = count + 1
                 print(f'Finished episode {count}.')
         video_env.close_video_recorder()

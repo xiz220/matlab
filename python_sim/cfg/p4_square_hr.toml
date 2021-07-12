@@ -1,11 +1,12 @@
 [env]
-lattice_img_path='images/candidate_3_clean.png'
+lattice_img_path='images/square_lattice.png'
+# each lattice beam is 29 px across. Desire beam width 200 microns --> 7 microns per pixel
+image_scale=5 #number of microns per pixel
 sensor_model="update_sensor_reading_occupancy"
-image_scale=25 #number of microns per pixel
 sensor_occ_radius = 75 #radius for the local occupancy grid sensor
-n_agents=10
-max_deposition_radius=1000 #max distance from the robot that it can deposit material
-max_episode_length=400
+n_agents=12
+max_deposition_radius=70 #max distance from the robot that it can deposit material
+max_episode_length=500
 motion_model='unrestricted' #'unrestricted' or 'restricted' -- unrestricted means robots can travel through material
                             # restricted means they cannot
 
@@ -15,6 +16,6 @@ rule_name = "AngleExtrusionRule_v2"
 include_env = false
 
 [rule_args]
-turn_delay_max=5
-slowdown_alpha=0.5
-angle=45
+turn_delay_max=15
+slowdown_alpha=0.3
+angle=42

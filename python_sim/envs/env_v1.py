@@ -14,12 +14,14 @@ class OccupancyGridEnv(gym.Env):
     metadata = {'render.modes': ['human', 'rgb_array']}
 
     def __init__(self, lattice_img_path=None,
+                 image_scale=1.0, # microns per grid unit
                  n_agents=3,
                  sensor_model='update_sensor_reading_laser',
-                 sensor_occ_radius = 3,
+                 sensor_occ_radius=3,
                  max_episode_length=500,
                  max_deposition_radius=1,
                  motion_model='unrestricted'):
+        self.image_scale = image_scale
         self.n_agents = n_agents
         self.max_episode_length = max_episode_length
         self.ep_step = 0
@@ -36,17 +38,28 @@ class OccupancyGridEnv(gym.Env):
         self.motion_model = motion_model
 
         self.x = self.init_agents()
-        self.sensor_occ_radius = sensor_occ_radius
+        self.sensor_occ_radius = int(sensor_occ_radius/self.image_scale)
+
         self.update_sensor_reading = getattr(self, sensor_model)  # self.update_sensor_reading_laser
         self.sensor_reading = None
         self.deposition_sorter = None #holds distance vector so as to avoid duplicating this calculation
-        self.max_deposition_radius = max_deposition_radius
+        self.max_deposition_radius = int(max_deposition_radius/self.image_scale)
+        self.deposition_rate = int(50*5/(self.image_scale**2)) #theoretically 5 um^2/s (at 1um thick) at 50x speedup
+        if self.max_deposition_radius < 1 or self.sensor_occ_radius < 1 or self.deposition_rate < 1:
+            print("IMG SCALE SEEMS OFF: deposition or sensor radius less than 1")
+
         self.update_sensor_reading() #initialize sensor reading to be of correct dimension
 
         self._set_observation_space()
         self.action_space = gym.spaces.Box(shape=(self.n_agents, 3), low=-np.inf, high=np.inf, dtype=np.float32)
 
         self.laser_angle = np.zeros(self.n_agents)
+
+        self.flags = []
+        print('deposition radius: ', self.max_deposition_radius,' pixels')
+        print('deposition rate: ', self.deposition_rate,' pixels/timestep')
+        print('sensor radius: ', self.sensor_occ_radius,' pixels')
+
 
     def init_agents(self):
         """ Initialize agents to be at random unoccupied positions. This initializes the self.x variable
@@ -133,12 +146,25 @@ class OccupancyGridEnv(gym.Env):
             self.robot_handle = self.ax.scatter(self.x[:, 0], self.x[:, 1], 10, 'red')
 
             # Add occupancy grid
-            self.occ_render = self.ax.imshow(1 - self.occupancy, cmap='gray', vmin=0, vmax=1)
+            occ_data = (1-((self.occupancy==1).astype('float')+0.7*(self.occupancy==2).astype('float')))
+            self.occ_render = self.ax.imshow(occ_data, cmap='gray', vmin=0, vmax=1)
+
+            # Draw scale line
+            self.ax.plot([50, 50+1000/self.image_scale], [25,25])
+            self.ax.text(x=1,y=22,s='1 mm',fontsize=4,color='tab:blue')
+            self.ax.text(x=1,y=5,s='timescale: 50x',fontsize=4,color='tab:blue')
+
+            # Draw flags
+            self.flag_handle = self.ax.scatter(None, None, 8, alpha=0.25, c='green')
 
         self.robot_handle.set_offsets(self.x)
 
         # update occupancy grid
-        self.occ_render.set_data(1-self.occupancy)
+        occ_data = (1-((self.occupancy==1).astype('float')+0.7*(self.occupancy==2).astype('float')))
+        self.occ_render.set_data(occ_data)
+
+        if len(self.flags) > 0:
+            self.flag_handle.set_offsets(np.array(self.flags))
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
@@ -150,17 +176,19 @@ class OccupancyGridEnv(gym.Env):
             rgb = np.frombuffer(s, np.uint8).reshape((height, width, 4))
             return rgb
 
+    def set_flag(self, x, y):
+        self.flags.append([x,y])
+
     def get_obs(self):
         return {'x': self.x, 'sensor_readings': self.sensor_reading}
 
     def update_state(self, action):
-        movement_action = action[:, 0:2]
         deposition_action = action[:, 2:]
         # robot deposition of material
         self.perform_deposition(deposition_action)
 
         movement_action = action[:, 0:2]
-        candidate_state = self.x + movement_action
+        candidate_state = self.x + (1/self.image_scale)*movement_action
         for i in range(self.n_agents):
             if self.motion_model=='restricted':
                 if self.is_occupied(candidate_state[i, 0], candidate_state[i, 1]):
@@ -192,14 +220,15 @@ class OccupancyGridEnv(gym.Env):
         for i in range(deposition_centers_array.shape[0]):
             row_ind, col_ind = self.xy_to_occ_ind(deposition_centers_array[i, 0], deposition_centers_array[i, 1])
             #local_occ = self.get_window(self.x[i,0], self.x[i,1], self.max_deposition_radius)
-            for k in range(self.deposition_sorter.shape[0]):
-                cand_row = self.deposition_inds[self.deposition_sorter[k],0] + row_ind
-                cand_col = self.deposition_inds[self.deposition_sorter[k],1] + col_ind
-                cand_x, cand_y = self.occ_ind_to_xy(cand_row, cand_col)
-                if (not self.is_ob(cand_x,cand_y)) and np.linalg.norm(np.array([row_ind-cand_row, col_ind-cand_col])) < self.max_deposition_radius:
-                    if self.occupancy[cand_row,cand_col] == 0:
-                        self.occupancy[cand_row,cand_col] = 1
-                        break
+            for _ in range(self.deposition_rate):
+                for k in range(self.deposition_sorter.shape[0]):
+                    cand_row = self.deposition_inds[self.deposition_sorter[k],0] + row_ind
+                    cand_col = self.deposition_inds[self.deposition_sorter[k],1] + col_ind
+                    cand_x, cand_y = self.occ_ind_to_xy(cand_row, cand_col)
+                    if (not self.is_ob(cand_x,cand_y)) and np.linalg.norm(np.array([row_ind-cand_row, col_ind-cand_col])) < self.max_deposition_radius:
+                        if self.occupancy[cand_row,cand_col] == 0:
+                            self.occupancy[cand_row,cand_col] = 2
+                            break
             # print('deposited at: %d, %d' % (deposition_list[i,0], deposition_list[i,1]))
 
     def update_sensor_reading_laser(self, laser_resolution=0.1):
@@ -253,7 +282,7 @@ class OccupancyGridEnv(gym.Env):
             #raise ValueError("(%d,%d) is out of bounds" % (x, y))
 
         row_ind, col_ind = self.xy_to_occ_ind(x, y)
-        return self.occupancy[row_ind, col_ind] == 1
+        return self.occupancy[row_ind, col_ind] >= 1
 
     def is_ob(self, x, y):
         x = int(x)

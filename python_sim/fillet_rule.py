@@ -60,7 +60,7 @@ class FilletRule:
         return np.concatenate((self.directions + 1.0*(np.random.rand(self.n_agents,2)-0.5),np.array(deposition_action).reshape((self.n_agents,1))), axis=1)
 
 
-def calculate_centroid(matrix):
+def calculate_centroid(matrix, stigmergic=False):
     """"
     Arguments:
         matrix : nxn numpy array of occupancy grid sensor readings, where n must be odd
@@ -69,6 +69,11 @@ def calculate_centroid(matrix):
         the [x,y] centroid of the matrix weighted by sensor value (binary), where x is measured from the left side of
         the matrix, and y is measured up from the bottom of the matrix
     """
+    if not stigmergic:
+        matrix = (matrix >= 1).astype('int') #ensure that all of the 2s in the occupancy grid are replaced with 1s
+    else:
+        matrix = (matrix == 1).astype('int') #replace all 2s with 0s, ignoring them completely
+
     row_centroid = np.sum(np.multiply(np.sum(matrix,axis=1), np.array(range(matrix.shape[0]))))/np.sum(matrix)
     col_centroid = np.sum(np.multiply(np.sum(matrix,axis=0), np.array(range(matrix.shape[1]))))/np.sum(matrix)
 

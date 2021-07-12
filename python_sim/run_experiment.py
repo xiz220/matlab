@@ -32,6 +32,8 @@ def main():
         # create environment
         env = OccupancyGridEnv(**env_cfg)
         done = False
+        if rule_cfg['include_env']:
+            rule.set_env(env)
         obs = env.reset()
         while not done:
             action = rule.get_action(obs)
