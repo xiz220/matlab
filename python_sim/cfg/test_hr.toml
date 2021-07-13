@@ -10,9 +10,9 @@ motion_model='unrestricted' #'unrestricted' or 'restricted' -- unrestricted mean
                             # restricted means they cannot
 
 [rule]
-rule_file = "angle_extrusion_rule_v2"
-rule_name = "AngleExtrusionRule_v2"
-include_env = true
+rule_file = "wall_follow_v3"
+rule_name = "WallFollow_v3"
+include_env = false
 
 [rule_args]
 turn_delay_max=5
