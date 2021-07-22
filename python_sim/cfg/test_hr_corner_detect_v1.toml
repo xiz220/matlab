@@ -1,5 +1,5 @@
 [env]
-lattice_img_path='images/candidate_3_high_res_a.png'
+lattice_img_path='images/square_lattice.png'
 image_scale=10 #number of microns per pixel
 sensor_model="update_sensor_reading_occupancy"
 sensor_occ_radius = 75 #radius for the local occupancy grid sensor
@@ -7,14 +7,20 @@ n_agents=10
 max_deposition_radius=1000 #max distance from the robot that it can deposit material
 max_episode_length=400
 motion_model='unrestricted' #'unrestricted' or 'restricted' -- unrestricted means robots can travel through material
-                            # restricted means they cannot
+                            # restricted meansbh0 they cannot
 
 [rule]
-rule_file = "wall_follow_v3"
-rule_name = "WallFollow_v3"
-include_env = false
+rule_file = "corner_detection_v1"
+rule_name = "CornerDetection_v1"
+include_env = true
 
 [rule_args]
 turn_delay_max=5
 slowdown_alpha=0.5
 angle=45
+moving_avg_window_size=30
+moving_var_window_size=10
+var_queue_size=5
+var_threshold=10
+
+
