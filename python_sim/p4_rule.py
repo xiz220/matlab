@@ -19,12 +19,18 @@ class P4Rule:
         self.line_length = line_length
         self.jump_direction = 1
         self.random_jump = 0
+
+        #ANGLE BEAM EXTRUSION VARIABLES
         self.angle = angle
         self.radian = np.deg2rad(self.angle)
+        self.blinders = None
         self.turn_delay = None
         self.turn_delay_actions = None
         self.turn_delay_max = turn_delay_max
         self.slowdown_alpha = slowdown_alpha
+        self.prev_jump = None
+
+        #WALL FOLLOW / CORNER DETECTION VARIABLES
         self.z_vector = np.array([0,0,1])
         self.moving_avg = None
         self.moving_window = None
@@ -46,7 +52,12 @@ class P4Rule:
 
     
     def get_action(self, obs):
-        
+        """
+        Takes in an observation and returns the next action: move randomly, deposit if adjacent to existing material.
+        :param obs: observation dict {'x': robot_states (n_agents x 2 np array), 'sensor_readings': (n_agents x row_dim x col_dim) np array}
+        :return: n_agents x 3 np array, where row i represents the i'th robot's: [x_action, y_action, deposition_action]
+        """
+
         sensor_reading = obs['sensor_readings']
         if self.n_agents is None:
             self.n_agents = len(sensor_reading)
@@ -65,6 +76,10 @@ class P4Rule:
             self.moving_var_window = np.zeros((self.n_agents,self.var_queue_size))
             self.deposition_flag = np.zeros((self.n_agents,))
             self.robot_state = np.zeros((self.n_agents,))
+            self.prev_jump = np.zeros((self.n_agents, 2))
+            self.blinders = np.zeros((self.n_agents,1))
+            self.turn_delay = np.zeros((self.n_agents,1))
+            self.turn_delay_actions = np.zeros((self.n_agents,2))
 
         self.x = obs['x']
 
@@ -141,6 +156,18 @@ class P4Rule:
         return direction_wise_density, direction_wise_count, direction_wise_size, total_density
 
     def direction_to_centroid(self, obs_grid):
+        '''
+         Parameters
+         ----------
+         obs_grid : TYPE - np array
+             DESCRIPTION. - sensor_readings of dimensions [row_dim, col_dim]
+
+         Returns
+         -------
+         numpy (1,2) array:
+         unnormalized vector from the robot position to the centroid of the observation
+         '''
+
         centroid = calculate_centroid(obs_grid)
         direction_centroid = centroid - np.floor((obs_grid.shape[0] - 1) / 2) * np.ones((2,))
 
@@ -212,9 +239,63 @@ class P4Rule:
                 # pdb.set_trace()
 
     def beam_update(self, obs, i):
-        self.actions_list[i] = np.array([0,0])
-        self.deposition_action[i] = 1
-        # TODO ADD P4 CODE IN HERE
+
+
+        jump_dir = -self.direction_to_centroid(obs)
+        threshold = 0.8
+
+
+        if self.turn_delay[i] == 0:  # if we are not in turn delay state
+
+            # if observation is all zeros or all ones
+            if (jump_dir == np.array([0, 0])).all():
+
+                # move in random direction, take blinders off, do not deposit material
+                self.actions_list[i] = (np.random.rand(2) - 0.5) * 100
+                self.prev_jump[i] = self.actions_list[i] * 0.2
+                self.blinders[i] = 0
+                self.deposition_action[i] = 0
+            else:  # else, we have some observation centroid
+
+                # normalize
+                jump_dir = jump_dir / np.linalg.norm(jump_dir)
+                dir_diff = (1 / 10) * self.prev_jump[i] - jump_dir
+                # if the difference between old mvmt dir and new movement dir is above threshold and the blinders
+                # are off
+                if np.linalg.norm(dir_diff) > threshold and self.blinders[i] == 0:
+                    self.turn_delay[i] = self.turn_delay_max
+                    self.turn_delay_actions[i, :] = self.prev_jump[i]
+                    self.blinders[i] = 10 + self.turn_delay_max
+                    # find the nearest angle to snap to
+                    cand_vectors = np.array([[np.cos(self.radian), np.sin(self.radian)],
+                                             [np.cos(self.radian), -np.sin(self.radian)],
+                                             [-np.cos(self.radian), np.sin(self.radian)],
+                                             [-np.cos(self.radian), -np.sin(self.radian)]])
+
+                    dot_products = dir_diff @ cand_vectors.T
+                    snapped_jump_dir = cand_vectors[np.argmin(dot_products), :]
+
+                    # move in the direction opposite the new disturbance
+                    self.actions_list[i] = 10 * snapped_jump_dir * self.slowdown_alpha
+                    self.deposition_action[i] = 1
+                    self.prev_jump[i] = 10 * snapped_jump_dir
+
+                    # import pdb; pdb.set_trace()
+
+                else:  # else, no significant new disturbance (or blinders on)
+                    if self.blinders[i] != 0:  # decrement blinders if they are on
+                        self.blinders[i] = self.blinders[i] - 1
+                    self.actions_list[i] = self.prev_jump[i] * self.slowdown_alpha
+                    self.deposition_action[i] = 1
+
+        else:
+            self.turn_delay[i] = self.turn_delay[i] - 1
+            self.actions_list[i] = self.turn_delay_actions[i, :] * self.slowdown_alpha
+            self.deposition_action[i] = 1
+            if hasattr(self, 'env') and self.turn_delay[i] == 0:
+                self.env.set_flag(self.x[i, 0], self.x[i, 1])
+            # import pdb; pdb.set_trace()
+
 
     def set_env(self, env):
         self.env = env
