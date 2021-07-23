@@ -72,15 +72,15 @@ class P4Rule:
             obs = sensor_reading[i, :, :]
             self.increment_history_vars(i)
 
-            if self.robot_state == 0:
+            if self.robot_state[i] == 0:
                 self.wallfollow_update(obs, i)
 
-            if self.robot_state == 1:
+            if self.robot_state[i] == 1:
                 self.beam_update(obs, i)
 
             
                 
-        return np.concatenate((np.array(self.actions_list), np.array(deposition_action).reshape(self.n_agents, 1)),
+        return np.concatenate((np.array(self.actions_list), np.array(self.deposition_action).reshape(self.n_agents, 1)),
                               axis=1)
 
     def increment_history_vars(self, i):
@@ -206,9 +206,15 @@ class P4Rule:
 
         if ((self.wall_follow_flag[i] == 1) and (self.moving_var_window[i] > self.var_threshold).all()):
             self.wall_follow_flag[i] = 0
+            self.robot_state[i] = 1
             if hasattr(self, 'env'):
                 self.env.set_flag(self.prev_x[i][0, 0], self.prev_x[i][0, 1])
                 # pdb.set_trace()
+
+    def beam_update(self, obs, i):
+        self.actions_list[i] = np.array([0,0])
+        self.deposition_action[i] = 1
+        # TODO ADD P4 CODE IN HERE
 
     def set_env(self, env):
         self.env = env
