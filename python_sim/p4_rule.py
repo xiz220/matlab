@@ -20,6 +20,8 @@ class P4Rule:
         self.jump_direction = 1
         self.random_jump = 0
 
+        self.robot_state = None
+
         #ANGLE BEAM EXTRUSION VARIABLES
         self.angle = angle
         self.radian = np.deg2rad(self.angle)
@@ -29,6 +31,7 @@ class P4Rule:
         self.turn_delay_max = turn_delay_max
         self.slowdown_alpha = slowdown_alpha
         self.prev_jump = None
+        self.turn_counter = None
 
         #WALL FOLLOW / CORNER DETECTION VARIABLES
         self.z_vector = np.array([0,0,1])
@@ -43,6 +46,7 @@ class P4Rule:
         self.corner_counter = None
         self.moving_var_window = None
         self.deposition_counter = None
+        self.deposition_flag = None #what is this??
         self.avg_window_size = moving_avg_window_size #for eg: if defined as 10, then it will take 10 raw angle values and average it
         self.var_window_size = moving_var_window_size #function similar to moving_avg_window_size, but will take in the averaged values and then calculate variance for the particular window size
         self.var_queue_size = var_queue_size #window size used to see the consistency in varience and detect corner based on irregularity
@@ -64,7 +68,6 @@ class P4Rule:
             self.deposition_action = np.zeros((self.n_agents,))
             self.actions_list = [np.zeros((2,)) for _ in range(self.n_agents)]
             self.prev_x = np.zeros((self.n_agents,7,2)) ##
-            self.counter = np.zeros((self.n_agents,1))  
             self.turn_delay = np.zeros((self.n_agents,1))
             self.turn_delay_actions = np.zeros((self.n_agents,2))
             self.moving_window = np.zeros((self.n_agents,self.avg_window_size))   ##
@@ -80,6 +83,7 @@ class P4Rule:
             self.blinders = np.zeros((self.n_agents,1))
             self.turn_delay = np.zeros((self.n_agents,1))
             self.turn_delay_actions = np.zeros((self.n_agents,2))
+            self.turn_counter = np.zeros((self.n_agents,1))
 
         self.x = obs['x']
 
@@ -230,13 +234,15 @@ class P4Rule:
         if ((self.moving_var_window[i] <= self.var_threshold).all() and (self.wall_follow_flag[i] == 0) and
                 self.deposition_flag[i] == 1):
             self.wall_follow_flag[i] = 1
-
-        if ((self.wall_follow_flag[i] == 1) and (self.moving_var_window[i] > self.var_threshold).all()):
-            self.wall_follow_flag[i] = 0
-            self.robot_state[i] = 1
-            if hasattr(self, 'env'):
-                self.env.set_flag(self.prev_x[i][0, 0], self.prev_x[i][0, 1])
-                # pdb.set_trace()
+        if self.blinders[i] == 0:
+            if ((self.wall_follow_flag[i] == 1) and (self.moving_var_window[i] > self.var_threshold).all()):
+                self.wall_follow_flag[i] = 0
+                self.robot_state[i] = 1
+                if hasattr(self, 'env'):
+                    self.env.set_flag(self.prev_x[i][0, 0], self.prev_x[i][0, 1])
+                    # pdb.set_trace()
+        else:
+            self.blinders[i] = self.blinders[i]-1
 
     def beam_update(self, obs, i):
 
@@ -292,8 +298,16 @@ class P4Rule:
             self.turn_delay[i] = self.turn_delay[i] - 1
             self.actions_list[i] = self.turn_delay_actions[i, :] * self.slowdown_alpha
             self.deposition_action[i] = 1
-            if hasattr(self, 'env') and self.turn_delay[i] == 0:
-                self.env.set_flag(self.x[i, 0], self.x[i, 1])
+            if self.turn_delay[i] == 0:
+                if self.turn_counter[i] == 0:
+                    self.turn_counter[i] = 1
+                else:
+                    self.turn_counter[i] = 0
+                    if hasattr(self, 'env'):
+                        self.env.set_flag(self.x[i, 0], self.x[i, 1])
+                    self.robot_state[i] = 0
+                    self.blinders[i] = self.avg_window_size + 10
+
             # import pdb; pdb.set_trace()
 
 
