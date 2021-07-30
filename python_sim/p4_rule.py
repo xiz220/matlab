@@ -211,8 +211,8 @@ class P4Rule:
 
         elif ((total_density > 0.55) and (total_density <= 0.85)):
             # bot is inside the wall, action is to move parallel to wall but also away from centroid
-            temp_movement_vector = total_density * direct_parallel_wall[0:2] + (
-                        -1 + total_density) * direction_centroid_norm[0:2]
+            temp_movement_vector = total_density * direct_parallel_wall[0:2] + \
+                                   (-1 + total_density) * direction_centroid_norm[0:2]
 
             self.actions_list[i] = ((temp_movement_vector / np.linalg.norm(
                 temp_movement_vector)) * self.slowdown_alpha) * 10
@@ -221,7 +221,8 @@ class P4Rule:
 
         elif ((total_density > 0.85) and (total_density < 1)):
             # bot is almost completely inside the wall so move in the opposite direction of centroid
-            self.actions_list[i] = (-direction_centroid_norm[0:2]) * 10
+            self.actions_list[i] = ((total_density * (-direction_centroid_norm[0:2])) +
+                                    ((1 - total_density) * direct_parallel_wall[0:2])) * 10
             self.deposition_action[i] = 0
             self.deposition_flag[i] = 0
 
