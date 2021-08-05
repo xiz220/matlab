@@ -51,7 +51,9 @@ class P4Rule:
         self.var_window_size = moving_var_window_size #function similar to moving_avg_window_size, but will take in the averaged values and then calculate variance for the particular window size
         self.var_queue_size = var_queue_size #window size used to see the consistency in varience and detect corner based on irregularity
         self.var_threshold = var_threshold #threshold on which the var_queue_size would tested
-        
+
+        #STOP CONDIITON
+        self.n_corners = None
 
 
     
@@ -84,6 +86,8 @@ class P4Rule:
             self.turn_delay = np.zeros((self.n_agents,1))
             self.turn_delay_actions = np.zeros((self.n_agents,2))
             self.turn_counter = np.zeros((self.n_agents,1))
+            self.n_corners = np.zeros((self.n_agents,))
+            self.extrude_after_stop_counter = np.zeros((self.n_agents,))
 
         self.x = obs['x']
 
@@ -97,8 +101,8 @@ class P4Rule:
             if self.robot_state[i] == 1:
                 self.beam_update(obs, i)
 
-            
-                
+        self.t += 1
+        self.check_stop_position()
         return np.concatenate((np.array(self.actions_list), np.array(self.deposition_action).reshape(self.n_agents, 1)),
                               axis=1)
 
@@ -239,6 +243,7 @@ class P4Rule:
             if ((self.wall_follow_flag[i] == 1) and (self.moving_var_window[i] > self.var_threshold).all()):
                 self.wall_follow_flag[i] = 0
                 self.robot_state[i] = 1
+                self.n_corners[i] += 1
                 if hasattr(self, 'env'):
                     self.env.set_flag(self.prev_x[i][0, 0], self.prev_x[i][0, 1])
                     # pdb.set_trace()
@@ -307,9 +312,23 @@ class P4Rule:
                     if hasattr(self, 'env'):
                         self.env.set_flag(self.x[i, 0], self.x[i, 1])
                     self.robot_state[i] = 0
+                    self.n_corners[i] += 1
+                    if hasattr(self, 'env'):
+                        self.env.set_flag(self.prev_x[i][0, 0], self.prev_x[i][0, 1])
                     self.blinders[i] = self.avg_window_size + 10
 
             # import pdb; pdb.set_trace()
+
+    def check_stop_position(self):
+        for i in range(self.n_agents):
+            if self.n_corners[i] >= 2:
+                self.actions_list[i] = np.array([0,0])
+                if self.extrude_after_stop_counter[i] >= 8:
+                    self.deposition_action[i] = 0
+                else:
+                    self.deposition_action[i] = 1
+                    self.extrude_after_stop_counter[i] += 1
+        print(self.n_corners)
 
 
     def set_env(self, env):

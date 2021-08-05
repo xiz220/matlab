@@ -26,7 +26,8 @@ class OccupancyGridEnv(gym.Env):
         self.max_episode_length = max_episode_length
         self.ep_step = 0
         self.fig = None
-
+        self.agent_wise_done = np.zeros((self.n_agents,))
+        self.agent_wise_idle_max = 5
 
         if lattice_img_path is not None:
             # get lattice image from file
@@ -36,7 +37,8 @@ class OccupancyGridEnv(gym.Env):
             raise NotImplementedError('Must provide lattice image to initialize environment')
 
         self.motion_model = motion_model
-
+        self.max_dispersion = 100
+        self.dispersion = 1.0
         self.x = self.init_agents()
         self.sensor_occ_radius = int(sensor_occ_radius/self.image_scale)
 
@@ -70,9 +72,16 @@ class OccupancyGridEnv(gym.Env):
             candidate_x = np.random.randint(0, self.occupancy.shape[1])
             candidate_y = np.random.randint(0, self.occupancy.shape[0])
             if not self.is_occupied(candidate_x, candidate_y):
-                x.append([candidate_x, candidate_y])
-                num_agents = num_agents + 1
-
+                if len(x) > 0:
+                    # calc distances to other robots
+                    dist = np.linalg.norm(np.array(x) - np.array([candidate_x, candidate_y]), axis=1)
+                    mindist = np.min(dist)
+                    if mindist > self.max_dispersion * self.dispersion:
+                        x.append([candidate_x, candidate_y])
+                        num_agents = num_agents + 1
+                else:
+                    x.append([candidate_x, candidate_y])
+                    num_agents = num_agents + 1
         return np.array(x)
 
     def reset(self):
@@ -96,6 +105,11 @@ class OccupancyGridEnv(gym.Env):
              info: not currently used
              """
         assert not np.isnan(action).any(), "Actions must not be NaN."
+        for i in range(self.n_agents):
+            if (action[i,:] == 0).all():
+                self.agent_wise_done[i] += 1
+            else:
+                self.agent_wise_done[i] = 0
         self.update_state(action)
         self.update_sensor_reading()
 
@@ -103,7 +117,7 @@ class OccupancyGridEnv(gym.Env):
         reward = 0
 
         self.ep_step = self.ep_step+1
-        done = self.ep_step >= self.max_episode_length
+        done = (self.ep_step >= self.max_episode_length) or (self.agent_wise_done >= self.agent_wise_idle_max).all()
         info = {}
         return obs, reward, done, info
 
