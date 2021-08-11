@@ -314,10 +314,9 @@ class OccupancyGridEnv(gym.Env):
         window = np.zeros((radius*2+1,radius*2+1))
         for i_x in range(2 * radius + 1):
                 for i_y in range(2 * radius + 1):
-                    if not self.is_ob(x - radius + i_x,
-                                      y -  radius + i_y):
-                        window[2 * radius - i_y, i_x] = self.is_occupied(
-                            x - radius + i_x, y - radius + i_y)
+                    if not self.is_ob(x - radius + i_x, y - radius + i_y):
+                        row_ind, col_ind = self.xy_to_occ_ind(x - radius + i_x, y - radius + i_y)
+                        window[2 * radius - i_y, i_x] = self.occupancy[row_ind,col_ind]
                     else:
                         window[2 * radius - i_y, i_x] = 1
 
