@@ -47,11 +47,13 @@ class ProximityRule:
                 self.state[i] = 'building'
                 deposition_action.append(1)
                 self.deposition[i] = self.line_length
-                self.actions_list[i] = (np.random.rand(2) - 0.5) * 20 * self.slowdown_alpha
+                unnormed_action = (np.random.rand(2) - 0.5)
+                self.actions_list[i] = unnormed_action * 20 * self.slowdown_alpha / np.linalg.norm(unnormed_action)
             elif self.state[i] == 'building' and (obs[n-1,n] == 1 or obs[n,n-1] == 1 or obs[n+1,n] == 1 or obs[n,n+1] == 1):
                 deposition_action.append(1)
                 self.deposition[i] = self.line_length
-                self.actions_list[i] = (np.random.rand(2) - 0.5) * 20 * self.slowdown_alpha
+                unnormed_action = (np.random.rand(2) - 0.5)
+                self.actions_list[i] = unnormed_action * 20 * self.slowdown_alpha / np.linalg.norm(unnormed_action)
             elif self.deposition[i] != 0:
                 deposition_action.append(1)
                 self.deposition[i] = self.deposition[i] - 1
