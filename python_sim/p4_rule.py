@@ -46,11 +46,12 @@ class P4Rule:
         self.corner_counter = None
         self.moving_var_window = None
         self.deposition_counter = None
-        self.deposition_flag = None #what is this??
+        self.deposition_flag = None #tracks whether robots have started depositing material
         self.avg_window_size = moving_avg_window_size #for eg: if defined as 10, then it will take 10 raw angle values and average it
         self.var_window_size = moving_var_window_size #function similar to moving_avg_window_size, but will take in the averaged values and then calculate variance for the particular window size
         self.var_queue_size = var_queue_size #window size used to see the consistency in varience and detect corner based on irregularity
         self.var_threshold = var_threshold #threshold on which the var_queue_size would tested
+        self.three_pt_filter_array = None #3 point (one-two-one) filter
 
         #STOP CONDIITON
         self.n_corners = None
@@ -88,6 +89,7 @@ class P4Rule:
             self.turn_counter = np.zeros((self.n_agents,1))
             self.n_corners = np.zeros((self.n_agents,))
             self.extrude_after_stop_counter = np.zeros((self.n_agents,))
+            self.three_pt_filter_array = np.zeros((self.n_agents, 3))  # 3 point (one-two-one) filter
 
         self.x = obs['x']
 
@@ -95,7 +97,7 @@ class P4Rule:
             obs = sensor_reading[i, :, :]
             self.increment_history_vars(i)
 
-            if self.robot_state[i] == 0:
+            if self.robot_state[i] == 0: #WALLFOLLOW
                 self.wallfollow_update(obs, i)
 
             if self.robot_state[i] == 1:
@@ -112,11 +114,35 @@ class P4Rule:
         self.prev_x[i][-1][0] = self.x[i, 0]
         self.prev_x[i][-1][1] = self.x[i, 1]
 
-        degree_angle = np.rad2deg(np.arctan2(self.actions_list[i][1], self.actions_list[i][0]))
+        ######################################
+        ##getting the angle of the direction in which the bot has moved
+        # angle wrap around also handled
+
+        # arctan2 usage: np.arctan2(y,x)
+        temp_angle = np.arctan2(self.actions_list[i][1], self.actions_list[i][0])
+
+        if ((temp_angle > -0.53) and (temp_angle < 0.53)):
+            temp_angle = temp_angle
+        else:
+            temp_angle = temp_angle if (temp_angle >= 0) else (2 * pi + temp_angle)
+
+        degree_angle = np.rad2deg(temp_angle)
+
+        ####################################
+        ##3 pt filter
+
+        self.three_pt_filter_array[i][:-1] = self.three_pt_filter_array[i][1:]
+        self.three_pt_filter_array[i][-1] = degree_angle
+        temp_3pt = 0.5 * self.three_pt_filter_array[i][1] + 0.25 * (
+                    self.three_pt_filter_array[i][0] + self.three_pt_filter_array[i][2])
+
+        ###################################
+
+        ##computing moving average
 
         # adding the degree_value in self.moving_window np array using queue logic, FIFO
         self.moving_window[i][:-1] = self.moving_window[i][1:]
-        self.moving_window[i][-1] = degree_angle
+        self.moving_window[i][-1] = temp_3pt
         # take average of degree values present in the moving window to get moving average
         temp_avg = sum(self.moving_window[i]) / len(self.moving_window[i])
 
