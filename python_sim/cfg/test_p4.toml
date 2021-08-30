@@ -7,7 +7,7 @@ n_agents=10
 max_deposition_radius=1000 #max distance from the robot that it can deposit material
 max_episode_length=1000
 motion_model='unrestricted' #'unrestricted' or 'restricted' -- unrestricted means robots can travel through material
-                            # restricted meansbh0 they cannot
+                            # restricted means they cannot
 
 [rule]
 rule_file = "p4_rule"
@@ -15,12 +15,19 @@ rule_name = "P4Rule"
 include_env = true
 
 [rule_args]
-turn_delay_max=5
-slowdown_alpha=0.75
-angle=45
+extrude_after_stop_time=10
+
+[rule_args.wall_follow_kwargs]
 moving_avg_window_size=30
 moving_var_window_size=10
 var_queue_size=10
 var_threshold=8
+slowdown_alpha=0.75
+
+[rule_args.angle_beam_kwargs]
+turn_delay_max=5
+slowdown_alpha=0.75
+angle=45
+
 
 
