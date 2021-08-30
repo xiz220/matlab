@@ -354,7 +354,7 @@ class P4Rule:
                 else:
                     self.deposition_action[i] = 1
                     self.extrude_after_stop_counter[i] += 1
-        print(self.n_corners)
+        #print(self.n_corners) TODO: add in this print conditional on -test flag
 
 
     def set_env(self, env):

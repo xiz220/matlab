@@ -266,7 +266,7 @@ class OccupancyGridEnv(gym.Env):
                     break
             self.sensor_reading[i].append(cur_dist)
 
-        print(self.sensor_reading)
+        #print(self.sensor_reading)
 
     def update_sensor_reading_occupancy(self):
         """
