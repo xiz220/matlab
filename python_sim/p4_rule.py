@@ -43,20 +43,25 @@ class P4Rule:
             self.actions_list = [np.zeros((2,)) for _ in range(self.n_agents)]
             self.robot_state = np.zeros((self.n_agents,))
             self.n_corners = np.zeros((self.n_agents,))
-            self.extrude_after_stop_counter = np.ones((self.n_agents,))*self.extrude_after_stop_time
+            self.extrude_after_stop_counter = np.ones((self.n_agents,)) * self.extrude_after_stop_time
 
         self.x = obs['x']
-
+        print('time: ', self.t)
+        print('state: ', self.robot_state)
+        print(self.angle_beam_controller.turn_counter)
         for i in range(self.n_agents):
 
-            if self.robot_state[i] == 0:  # WALLFOLLOW
+            ############### WALLFOLLOW STATE ####################
+            if self.robot_state[i] == 0:
                 self.actions_list[i], self.deposition_action[i] = self.wall_follow_controller.get_action(obs, i)
 
                 if self.wall_follow_controller.corner_counter[i] >= 1:
+                    self.wall_follow_controller.corner_counter[i] = 0
                     self.robot_state[i] = 1
                     if hasattr(self, 'env'):
                         self.env.set_flag(self.x[i, 0], self.x[i, 1])
 
+            ############### ANGLE BEAM STATE ####################
             if self.robot_state[i] == 1:  # ANGLE BEAM
                 self.actions_list[i], self.deposition_action[i] = self.angle_beam_controller.get_action(obs, i)
 

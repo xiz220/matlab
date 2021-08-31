@@ -3,7 +3,7 @@ lattice_img_path='images/square_lattice.png'
 image_scale=10 #number of microns per pixel
 sensor_model="update_sensor_reading_occupancy"
 sensor_occ_radius = 75 #radius for the local occupancy grid sensor
-n_agents=10
+n_agents=3
 max_deposition_radius=1000 #max distance from the robot that it can deposit material
 max_episode_length=1000
 motion_model='unrestricted' #'unrestricted' or 'restricted' -- unrestricted means robots can travel through material
@@ -25,7 +25,7 @@ var_threshold=8
 slowdown_alpha=0.75
 
 [rule_args.angle_beam_kwargs]
-turn_delay_max=5
+turn_delay_max=12
 slowdown_alpha=0.75
 angle=45
 
