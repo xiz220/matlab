@@ -1,15 +1,19 @@
 '''
-moving avg window - 30
-variance window - 15
+Parameters that need to be defined in toml file
+moving_avg_window_size=30
+moving_var_window_size=10
+var_queue_size=10
+var_threshold=8
 '''
+
 
 import numpy as np
 from math import pi
-import pdb
+#import pdb
 from fillet_rule import calculate_centroid
-import pandas as pd
+#import pandas as pd
 
-class CornerDetection_v1:
+class CornerDetection_v2:
 
     def __init__(self, line_length=10, turn_delay_max=5, slowdown_alpha=0.5, angle=45, moving_avg_window_size=30, moving_var_window_size=20, var_queue_size=5, var_threshold=10):
         self.n_agents = None
@@ -19,12 +23,7 @@ class CornerDetection_v1:
         self.t = 0
         self.line_length = line_length
         self.jump_direction = 1
-        self.random_jump = 0
         self.angle = angle
-        self.radian = np.deg2rad(self.angle)
-        self.turn_delay = None
-        self.turn_delay_actions = None
-        self.turn_delay_max = turn_delay_max
         self.slowdown_alpha = slowdown_alpha
         self.z_vector = np.array([0,0,1])
         self.moving_avg = None
@@ -77,7 +76,7 @@ class CornerDetection_v1:
         return direction_wise_density, direction_wise_count, direction_wise_size, total_density
     
     def direction_to_centroid(self, obs_grid):
-        centroid = calculate_centroid(obs_grid)
+        centroid = calculate_centroid(obs_grid, stigmergic = False)
         direction_centroid = centroid - np.floor((obs_grid.shape[0]-1)/2)*np.ones((2,))
         
         return direction_centroid
@@ -89,7 +88,7 @@ class CornerDetection_v1:
             self.n_agents = len(sensor_reading)
             self.deposition = np.zeros((self.n_agents,))
             self.actions_list = [np.zeros((2,)) for _ in range(self.n_agents)]
-            self.prev_x = np.zeros((self.n_agents,7,2)) ##
+            self.prev_x = np.zeros((self.n_agents,10,2)) ##
             self.counter = np.zeros((self.n_agents,1))  
             self.turn_delay = np.zeros((self.n_agents,1))
             self.turn_delay_actions = np.zeros((self.n_agents,2))
@@ -101,6 +100,10 @@ class CornerDetection_v1:
             self.corner_counter = np.zeros((self.n_agents,))
             self.moving_var_window = np.zeros((self.n_agents,self.var_queue_size))
             self.deposition_flag = np.zeros((self.n_agents,))
+            
+            ##3 point (one-two-one) filter
+            self.three_pt_filter_array = np.zeros((self.n_agents,3))
+     
         deposition_action = []
         x = obs['x']
         
@@ -161,13 +164,44 @@ class CornerDetection_v1:
             self.prev_x[i][-1][0] = x[i,0]
             self.prev_x[i][-1][1] = x[i,1]
             
-            degree_angle = np.rad2deg(np.arctan2(self.actions_list[i][1], self.actions_list[i][0]))
+            self.last_location[i,0][0] = x[i,0]
+            self.last_location[i,0][1] = x[i,1]
+            
+            ######################################
+            ##getting the angle of the direction in which the bot has moved
+            #angle wrap around also handled
+            
+            #arctan2 usage: np.arctan2(y,x)
+            temp_angle = np.arctan2(self.actions_list[i][1], self.actions_list[i][0])
+            
+            if ((temp_angle > -0.53) and (temp_angle < 0.53)) :
+                temp_angle = temp_angle
+            else :
+                temp_angle = temp_angle if (temp_angle >= 0) else (2*pi + temp_angle)
+            
+            degree_angle = np.rad2deg(temp_angle)
+            
+            
+            ####################################
+            ##3 pt filter
+            
+            self.three_pt_filter_array[i][:-1] = self.three_pt_filter_array[i][1:]
+            self.three_pt_filter_array[i][-1] = degree_angle
+            temp_3pt = 0.5*self.three_pt_filter_array[i][1] + 0.25*(self.three_pt_filter_array[i][0] + self.three_pt_filter_array[i][2])
+            
+            ###################################
+            
+            ##computing moving average
             
             #adding the degree_value in self.moving_window np array using queue logic, FIFO
             self.moving_window[i][:-1] = self.moving_window[i][1:]
-            self.moving_window[i][-1] = degree_angle
+            self.moving_window[i][-1] = temp_3pt
             #take average of degree values present in the moving window to get moving average
             temp_avg = sum(self.moving_window[i])/len(self.moving_window[i])
+            
+            ###################################
+            
+            ##moving variance
             
             #adding the temp_avg in self.variance_window np array using queue logic, FIFO
             self.variance_window[i][:-1] = self.variance_window[i][1:]
@@ -175,9 +209,15 @@ class CornerDetection_v1:
             #finding variance of the moving average values present in the variance window to get moving average
             temp_var = np.var(self.variance_window[i])
             
+            #######################################
+            
+            #variance queue
+            
             #storing values of moving variance in a queue to check for consistency or irregularities in bot movement
             self.moving_var_window[i][:-1] = self.moving_var_window[i][1:]
             self.moving_var_window[i][-1] = temp_var
+            
+            #######################################
             
             if((self.moving_var_window[i] <= self.var_threshold).all() and (self.wall_follow_flag[i] == 0) and self.deposition_flag[i] == 1):
                 self.wall_follow_flag[i] = 1
@@ -189,16 +229,12 @@ class CornerDetection_v1:
                     #pdb.set_trace()
             
             
-            # if i == 5:
-            #     pdb.set_trace()
-        
         # self.t = self.t + 1
-        # if (self.t == 999):
-        #     temp = pd.DataFrame(self.prev_x)
-        #     temp.to_excel('test.xlsx', 'Sheet1',  header = False, index = False)
-        #     temp = pd.DataFrame(self.)
-        #     pdb.set_trace()            
-                
+        
+        # if self.t == 999:
+        #         pdb.set_trace()
+        
+        
         return np.concatenate((np.array(self.actions_list), np.array(deposition_action).reshape(self.n_agents, 1)),
                               axis=1)
 

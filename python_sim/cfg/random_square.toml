@@ -1,0 +1,21 @@
+[env]
+lattice_img_path='images/square_lattice.png'
+# each lattice beam is 29 px across. Desire beam width 200 microns --> 7 microns per pixel
+image_scale=5 #number of microns per pixel
+sensor_model="update_sensor_reading_occupancy"
+sensor_occ_radius = 75 #radius for the local occupancy grid sensor
+n_agents=12
+max_deposition_radius=70 #max distance from the robot that it can deposit material
+max_episode_length=500
+motion_model='unrestricted' #'unrestricted' or 'restricted' -- unrestricted means robots can travel through material
+                            # restricted means they cannot
+
+[rule]
+rule_file = "proximity_rule"
+rule_name = "ProximityRule"
+include_env = false
+
+[rule_args]
+slowdown_alpha=1.0
+line_length = 10
+straight_line = true

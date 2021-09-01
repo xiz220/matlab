@@ -1,5 +1,5 @@
 [env]
-lattice_img_path='images/candidate_3_high_res_a.png'
+lattice_img_path='images/square_lattice.png'
 image_scale=10 #number of microns per pixel
 sensor_model="update_sensor_reading_occupancy"
 sensor_occ_radius = 75 #radius for the local occupancy grid sensor
@@ -7,20 +7,27 @@ n_agents=3
 max_deposition_radius=1000 #max distance from the robot that it can deposit material
 max_episode_length=1000
 motion_model='unrestricted' #'unrestricted' or 'restricted' -- unrestricted means robots can travel through material
-                            # restricted meansbh0 they cannot
+                            # restricted means they cannot
 
 [rule]
-rule_file = "corner_detection_v1_debug"
-rule_name = "CornerDetection_v1_debug"
+rule_file = "p4_rule"
+rule_name = "P4Rule"
 include_env = true
 
 [rule_args]
-turn_delay_max=5
-slowdown_alpha=0.75
-angle=45
+extrude_after_stop_time=10
+
+[rule_args.wall_follow_kwargs]
 moving_avg_window_size=30
 moving_var_window_size=10
 var_queue_size=10
 var_threshold=8
+slowdown_alpha=0.75
+
+[rule_args.angle_beam_kwargs]
+turn_delay_max=12
+slowdown_alpha=0.75
+angle=45
+
 
 

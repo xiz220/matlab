@@ -9,7 +9,7 @@ import pdb
 from fillet_rule import calculate_centroid
 import pandas as pd
 
-class CornerDetection_v1:
+class CornerDetection_v1_debug:
 
     def __init__(self, line_length=10, turn_delay_max=5, slowdown_alpha=0.5, angle=45, moving_avg_window_size=30, moving_var_window_size=20, var_queue_size=5, var_threshold=10):
         self.n_agents = None
@@ -89,7 +89,7 @@ class CornerDetection_v1:
             self.n_agents = len(sensor_reading)
             self.deposition = np.zeros((self.n_agents,))
             self.actions_list = [np.zeros((2,)) for _ in range(self.n_agents)]
-            self.prev_x = np.zeros((self.n_agents,7,2)) ##
+            self.prev_x = np.zeros((self.n_agents,15,2)) ##
             self.counter = np.zeros((self.n_agents,1))  
             self.turn_delay = np.zeros((self.n_agents,1))
             self.turn_delay_actions = np.zeros((self.n_agents,2))
@@ -101,6 +101,14 @@ class CornerDetection_v1:
             self.corner_counter = np.zeros((self.n_agents,))
             self.moving_var_window = np.zeros((self.n_agents,self.var_queue_size))
             self.deposition_flag = np.zeros((self.n_agents,))
+            
+            self.angle_store = [[],[],[]]
+            self.angle_store2 = [[],[],[]]
+            self.variance_store = [[],[],[]]
+            self.corner_registry = [[],[],[]]
+            self.corner_index = [[],[],[]]
+            self.last_location = np.zeros((self.n_agents,1,2))
+     
         deposition_action = []
         x = obs['x']
         
@@ -161,19 +169,25 @@ class CornerDetection_v1:
             self.prev_x[i][-1][0] = x[i,0]
             self.prev_x[i][-1][1] = x[i,1]
             
+            self.last_location[i,0][0] = x[i,0]
+            self.last_location[i,0][1] = x[i,1]
+            
             degree_angle = np.rad2deg(np.arctan2(self.actions_list[i][1], self.actions_list[i][0]))
+            self.angle_store[i].append(degree_angle)
             
             #adding the degree_value in self.moving_window np array using queue logic, FIFO
             self.moving_window[i][:-1] = self.moving_window[i][1:]
             self.moving_window[i][-1] = degree_angle
             #take average of degree values present in the moving window to get moving average
             temp_avg = sum(self.moving_window[i])/len(self.moving_window[i])
+            self.angle_store2[i].append(temp_avg)
             
             #adding the temp_avg in self.variance_window np array using queue logic, FIFO
             self.variance_window[i][:-1] = self.variance_window[i][1:]
             self.variance_window[i][-1] = temp_avg
             #finding variance of the moving average values present in the variance window to get moving average
             temp_var = np.var(self.variance_window[i])
+            self.variance_store[i].append(temp_var)
             
             #storing values of moving variance in a queue to check for consistency or irregularities in bot movement
             self.moving_var_window[i][:-1] = self.moving_var_window[i][1:]
@@ -186,18 +200,32 @@ class CornerDetection_v1:
                 self.wall_follow_flag[i] = 0
                 if hasattr(self,'env'):
                     self.env.set_flag(self.prev_x[i][0,0],self.prev_x[i][0,1])
+                    self.corner_registry[i].append([self.prev_x[i][0][0],self.prev_x[i][0][1]])
+                    self.corner_index[i].append(self.t)
                     #pdb.set_trace()
             
             
             # if i == 5:
             #     pdb.set_trace()
         
-        # self.t = self.t + 1
-        # if (self.t == 999):
-        #     temp = pd.DataFrame(self.prev_x)
-        #     temp.to_excel('test.xlsx', 'Sheet1',  header = False, index = False)
-        #     temp = pd.DataFrame(self.)
-        #     pdb.set_trace()            
+        self.t = self.t + 1
+        if (self.t == 999):
+            with pd.ExcelWriter('test_data.xlsx', engine = 'xlsxwriter') as writer: 
+                #temp = pd.DataFrame(self.last_location)
+                #temp.to_excel(writer, sheet_name='bot_position')
+                temp = pd.DataFrame(np.array(self.angle_store))
+                temp.to_excel(writer, sheet_name='raw_angle')
+                temp = pd.DataFrame(np.array(self.angle_store2))
+                temp.to_excel(writer, sheet_name='moving_avg')
+                temp = pd.DataFrame(np.array(self.variance_store))
+                temp.to_excel(writer, sheet_name='variance')
+                temp = pd.DataFrame(np.array(self.corner_registry))
+                temp.to_excel(writer, sheet_name='corner_positions')
+                temp = pd.DataFrame(np.array(self.corner_index))
+                temp.to_excel(writer, sheet_name='corner_index')
+                
+            writer.save()
+            pdb.set_trace()            
                 
         return np.concatenate((np.array(self.actions_list), np.array(deposition_action).reshape(self.n_agents, 1)),
                               axis=1)

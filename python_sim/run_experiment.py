@@ -13,6 +13,7 @@ def main():
     parser = argparse.ArgumentParser(description='Do a whole experiment.')
     parser.add_argument('-exp_name', default=None, help='Experiment name')
     parser.add_argument('-cfg', default=None, nargs='+', help='Configuration file path')
+    parser.add_argument('-no_record', action="store_false", default=True, help='Do not save a video -- only image')
     parser.add_argument('-test', action="store_true", default=False, help='Live render instead of saving video')
     args = parser.parse_args()
 
@@ -61,7 +62,8 @@ def main():
                      video_folder=str(experiment_dir),
                      name_prefix='video',
                      n_episodes=1,
-                     save_image=True)
+                     save_image=True,
+                     save_video=args.no_record)
 
 
 if __name__ == '__main__':
