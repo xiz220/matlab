@@ -67,7 +67,7 @@ class P4Rule:
 
                 # if it is SECOND time turning, then change robot to wall follow state, increment number of corners
                 if self.angle_beam_controller.turn_counter[i] >= 2:
-                    self.angle_beam_controller.turn_counter[i] = 0
+                    self.angle_beam_controller.reset_agent_i(i)
                     self.robot_state[i] = 0
                     self.n_corners[i] += 1
                     if hasattr(self, 'env'):

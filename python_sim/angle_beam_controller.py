@@ -28,8 +28,6 @@ class AngleBeamController:
         self.n_agents = None
         self.deposition_action = None
         self.actions_list = None
-        self.x = None
-        self.prev_x = None
         self.t = 0
 
         # ANGLE BEAM EXTRUSION VARIABLES
@@ -38,7 +36,7 @@ class AngleBeamController:
         self.blinders = None
         self.turn_delay = None
         self.turn_delay_actions = None
-        self.turn_delay_max = turn_delay_max
+        self.turn_delay_max = turn_delay_max/slowdown_alpha
         self.slowdown_alpha = slowdown_alpha
         self.prev_jump = None
         self.turn_counter = None
@@ -50,7 +48,6 @@ class AngleBeamController:
             self.n_agents = len(sensor_reading)
             self.deposition_action = np.zeros((self.n_agents,))
             self.actions_list = [np.zeros((2,)) for _ in range(self.n_agents)]
-            self.x = np.zeros((self.n_agents,2))
             self.prev_x = np.zeros((self.n_agents, 7, 2))  ##
             self.turn_delay = np.zeros((self.n_agents, 1))
             self.turn_delay_actions = np.zeros((self.n_agents, 2))
@@ -60,10 +57,6 @@ class AngleBeamController:
             self.turn_delay_actions = np.zeros((self.n_agents, 2))
             self.turn_counter = np.zeros((self.n_agents, 1))
 
-        self.prev_x[i][:-1] = self.prev_x[i][1:]
-        self.prev_x[i][-1][0] = self.x[i, 0]
-        self.prev_x[i][-1][1] = self.x[i, 1]
-        self.x = obs['x']
 
         jump_dir = - direction_to_centroid(sensor_reading[i])
         threshold = 0.8
@@ -122,3 +115,10 @@ class AngleBeamController:
                 self.turn_counter[i] += 1
 
         return self.actions_list[i], self.deposition_action[i]
+
+    def reset_agent_i(self, i):
+        self.turn_delay[i] = 0
+        self.turn_delay_actions[i,:] = np.zeros((1, 2))
+        self.prev_jump[i,:] = np.zeros((1, 2))
+        self.blinders[i] = 0
+        self.turn_counter[i] = 0
