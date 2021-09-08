@@ -3,6 +3,22 @@ import pdb
 import numpy as np
 import subprocess
 from os import path
+from pathlib import Path
+import matplotlib.image as mpimg
+
+
+def load_occupancy_grid(img_path):
+    img = mpimg.imread(img_path)
+    occupancy = rgb2gray(img)
+    occupancy = np.where(occupancy < 0.5, 1, 0)
+    return occupancy
+
+
+def save_occupancy_grid(occ, img_filename):
+    img_dir = Path(__file__).resolve().parents[0] / 'images'
+    occ_display = (1 - ((occ == 1).astype('float') + 0.7 * (occ == 2).astype('float')))
+    filepath = img_dir / img_filename
+    mpimg.imsave(str(filepath), occ_display, cmap="gray", origin='lower')
 
 
 def rgb2gray(rgb):
