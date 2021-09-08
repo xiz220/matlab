@@ -46,9 +46,9 @@ class P4Rule:
             self.extrude_after_stop_counter = np.ones((self.n_agents,)) * self.extrude_after_stop_time
 
         self.x = obs['x']
-        print('time: ', self.t)
-        print('state: ', self.robot_state)
-        print(self.angle_beam_controller.turn_counter)
+        #print('time: ', self.t)
+        #print('state: ', self.robot_state)
+        #print(self.angle_beam_controller.turn_counter)
         for i in range(self.n_agents):
 
             ############### WALLFOLLOW STATE ####################
