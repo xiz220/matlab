@@ -1,4 +1,5 @@
 import numpy as np
+import numpy as np
 #from math import pi
 import pdb
 from fillet_rule import calculate_centroid
@@ -43,8 +44,11 @@ class CircleExtrusionController:
         self.slowdown_alpha = slowdown_alpha
         self.z_vector = np.array([0,0,1])
         self.radius = circle_radius
+        self.circle_timer = None
+        self.vector_to_disturbance = None
         
-        
+    def update_robot_radius(self, i):
+        self.robot_wise_radius[i] = self.radius
     
     def get_action(self, obs, i):
         
@@ -67,6 +71,9 @@ class CircleExtrusionController:
             self.previous_centroid = np.zeros((self.n_agents,2))
             self.stop = np.zeros((self.n_agents,))
             self.count_circles = np.zeros((self.n_agents,))
+            self.robot_wise_radius = np.ones((self.n_agents,))*self.radius
+            self.circle_timer = np.zeros((self.n_agents,))
+            self.vector_to_disturbance = np.zeros((self.n_agents,2))
             
             #self.centroid_dist_history = [[],[],[]]
             
@@ -112,25 +119,37 @@ class CircleExtrusionController:
                     self.actions_list[i] = np.array([0,0])
                     self.circle_extrusion[i] = 1
                     self.seek_material[i] = 0
+                    self.update_robot_radius(i)
+
+                    # find circle center
                     present_position = x[i]
                     present_position = np.append(present_position, 0)
-                    centre = present_position + self.radius*(-direction_centroid_norm)
+                    centre = present_position + self.robot_wise_radius[i] * (-direction_centroid_norm)
                     self.circle_centre[i] = centre[0:2]
+
+                    #calculate how many steps the circle should take
+                    n_circle_steps = np.floor((2*np.pi*self.robot_wise_radius[i]))
+                    self.circle_timer[i] = n_circle_steps
+                    #import pdb; pdb.set_trace()
                     #pdb.set_trace()
-                            
+
                 
         ##begin circle extrusion            
         if ((self.circle_extrusion[i] == 1) and (self.seek_material[i] == 0)):
+
+
+
             vector_towards_centre = self.circle_centre[i] - x[i]
             vector_towards_centre = np.append(vector_towards_centre, 0)
             movement_direction = np.cross(vector_towards_centre, self.z_vector)
             
             dist_from_centre = np.linalg.norm(vector_towards_centre)
             
-            if (dist_from_centre > self.radius):
+            if (dist_from_centre > self.robot_wise_radius[i]):
                 movement_direction = 0.9*movement_direction + 0.1*vector_towards_centre
                 
             movement_norm = movement_direction/np.linalg.norm(movement_direction)
+            self.circle_timer[i] -= 1
             self.actions_list[i] = movement_norm[0:2]*10
             self.deposition_action[i] = 1
             self.blinders[i] += 1   ##blinders to avoid jumping of bot at the start of circle
@@ -142,16 +161,23 @@ class CircleExtrusionController:
         if ((total_density > 0.75) and (self.circle_extrusion[i] == 1)):
             self.stop[i] = 1
             self.jump_delay[i] = 50
+
+        if self.circle_timer[i] < -2:
+            self.stop[i] = 1
+            self.circle_timer[i] = 0
+            self.jump_delay[i] = 50
         
         ## Checking if change in centroid exceeds threshold in order to set stop flag    
         if ((dist_from_prev_centroid > 1.5) and (self.circle_extrusion[i] == 1) and (self.blinders[i] > 30)):
             self.circle_extrusion[i] = 0
             self.stop[i] = 1
             self.blinders[i] = 0
+            self.vector_to_disturbance[i,:] = (self.previous_centroid[i] - direction_centroid[0:2])/dist_from_prev_centroid
             #pdb.set_trace()
-            
+
+        delay_time = 10
         ##Delaying the stopping of the bot using jump_delay so as to let the bot meet the opposite material
-        if ((self.stop[i] == 1) and (self.jump_delay[i] <= 10)):
+        if ((self.stop[i] == 1) and (self.jump_delay[i] <= delay_time)):
             self.jump_delay[i] += 1
             vector_towards_centre = self.circle_centre[i] - x[i]
             vector_towards_centre = np.append(vector_towards_centre, 0)
@@ -159,14 +185,17 @@ class CircleExtrusionController:
             
             dist_from_centre = np.linalg.norm(vector_towards_centre)
             
-            if (dist_from_centre > self.radius):
+            if (dist_from_centre > self.robot_wise_radius[i]):
                 movement_direction = 0.9*movement_direction + 0.1*vector_towards_centre
                 
             movement_norm = movement_direction/np.linalg.norm(movement_direction)
             self.actions_list[i] = movement_norm[0:2]*10
             
             self.deposition_action[i] = 1
-        elif ((self.stop[i] == 1) and (self.jump_delay[i] > 10)):
+        elif ((self.stop[i] == 1) and (self.jump_delay[i] <= delay_time + 5)):
+            self.jump_delay[i] += 1
+            self.actions_list[i] = self.vector_to_disturbance[i,:]
+        elif ((self.stop[i] == 1) and (self.jump_delay[i] > delay_time + 5)):
             self.jump_delay[i] = 0
             self.seek_material[i] = 0
             self.stop[i] = 0
@@ -189,9 +218,11 @@ class CircleExtrusionController:
         self.previous_centroid[i] = direction_centroid[0:2]
         
         
-        if(self.t == 990):
-            pdb.set_trace()
-        
+        # if(self.t == 990):
+        #     pdb.set_trace()
+
+        # if np.isnan(self.actions_list[i]).any():
+        #     import pdb; pdb.set_trace()
         
         return self.actions_list[i], self.deposition_action[i]
     # def set_env(self, env):

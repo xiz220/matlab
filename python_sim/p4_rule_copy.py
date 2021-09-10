@@ -4,6 +4,7 @@ import pdb
 from wall_follow_controller import WallFollowController
 from angle_beam_controller import AngleBeamController
 from circle_extrusion_controller import CircleExtrusionController
+from stable_baselines.common.vec_env import DummyVecEnv
 
 
 class P4Rule:
@@ -16,6 +17,7 @@ class P4Rule:
         self.t = 0
         self.extrude_after_stop_time = extrude_after_stop_time
         self.extrude_after_stop_counter = None
+        self.max_t = None
 
         self.robot_state = None
 
@@ -42,11 +44,15 @@ class P4Rule:
             self.robot_state = np.zeros((self.n_agents,))
             self.n_corners = np.zeros((self.n_agents,))
             self.extrude_after_stop_counter = np.ones((self.n_agents,)) * self.extrude_after_stop_time
+            if type(self.env) is not DummyVecEnv:
+                self.max_t = self.env.max_episode_length
+            else:
+                self.max_t = self.env.get_attr("max_episode_length",0)[0]
 
         self.x = obs['x']
-        print('time: ', self.t)
-        print('state: ', self.robot_state)
-        print(self.angle_beam_controller.turn_counter)
+        #print('time: ', self.t)
+        #print('state: ', self.robot_state)
+        #print(self.angle_beam_controller.turn_counter)
         for i in range(self.n_agents):
 
             ############### WALLFOLLOW STATE ####################
@@ -72,7 +78,11 @@ class P4Rule:
             #             self.env.set_flag(self.x[i, 0], self.x[i, 1])
             
             self.actions_list[i], self.deposition_action[i] = self.circle_extrusion_controller.get_action(obs, i)
-            
+
+        if self.t > 0 and self.t%(np.floor(self.max_t/5)) == 0:
+            #import pdb; pdb.set_trace()
+            self.circle_extrusion_controller.radius=np.floor(0.75*self.circle_extrusion_controller.radius)
+
         self.t += 1
         #self.check_stop_position()
         return np.concatenate((np.array(self.actions_list), np.array(self.deposition_action).reshape(self.n_agents, 1)),
