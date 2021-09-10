@@ -84,6 +84,8 @@ class P4Rule:
             self.circle_extrusion_controller.radius=np.floor(0.75*self.circle_extrusion_controller.radius)
 
         self.t += 1
+        if self.t%10==0:
+            print(self.t)
         #self.check_stop_position()
         return np.concatenate((np.array(self.actions_list), np.array(self.deposition_action).reshape(self.n_agents, 1)),
                               axis=1)

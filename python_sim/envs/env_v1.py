@@ -67,16 +67,21 @@ class OccupancyGridEnv(gym.Env):
         """ Initialize agents to be at random unoccupied positions. This initializes the self.x variable
         to be a n_agents x 2 np array"""
         num_agents = 0
+        dispersion_override_counter = 0
+        dispersion_override = False
         x = []
         while num_agents < self.n_agents:
             candidate_x = np.random.randint(0, self.occupancy.shape[1])
             candidate_y = np.random.randint(0, self.occupancy.shape[0])
             if not self.is_occupied(candidate_x, candidate_y):
+                dispersion_override_counter += 1
+                if dispersion_override_counter > 1000:
+                    dispersion_override = True
                 if len(x) > 0:
                     # calc distances to other robots
                     dist = np.linalg.norm(np.array(x) - np.array([candidate_x, candidate_y]), axis=1)
                     mindist = np.min(dist)
-                    if mindist > self.max_dispersion * self.dispersion:
+                    if mindist > self.max_dispersion * self.dispersion or dispersion_override:
                         x.append([candidate_x, candidate_y])
                         num_agents = num_agents + 1
                 else:

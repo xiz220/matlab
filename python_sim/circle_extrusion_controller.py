@@ -44,12 +44,14 @@ class CircleExtrusionController:
         self.slowdown_alpha = slowdown_alpha
         self.z_vector = np.array([0,0,1])
         self.radius = circle_radius
+        self.init_radius = circle_radius
         self.circle_timer = None
         self.vector_to_disturbance = None
         
-    def update_robot_radius(self, i):
-        self.robot_wise_radius[i] = self.radius
-    
+    def update_robot_radius(self, i, x):
+        #self.robot_wise_radius[i] = self.radius
+        dist_to_center = np.linalg.norm([275,275]-x)
+        self.robot_wise_radius[i] = (1-np.min([(dist_to_center/300),0.9]))*self.init_radius
     def get_action(self, obs, i):
         
         sensor_reading = obs['sensor_readings']
@@ -119,7 +121,7 @@ class CircleExtrusionController:
                     self.actions_list[i] = np.array([0,0])
                     self.circle_extrusion[i] = 1
                     self.seek_material[i] = 0
-                    self.update_robot_radius(i)
+                    self.update_robot_radius(i, x[i])
 
                     # find circle center
                     present_position = x[i]
