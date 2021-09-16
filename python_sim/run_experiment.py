@@ -27,7 +27,7 @@ def main():
         rule_args = {}
 
     # import and create rule
-    rule_class = getattr(importlib.import_module(rule_cfg['rule_file']), rule_cfg['rule_name'])
+    rule_class = getattr(importlib.import_module('controllers.' + rule_cfg['rule_file']), rule_cfg['rule_name'])
     rule = rule_class(**rule_args)
 
     if args.test:  # live rendering

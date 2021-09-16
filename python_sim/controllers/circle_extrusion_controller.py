@@ -2,7 +2,7 @@ import numpy as np
 import numpy as np
 #from math import pi
 import pdb
-from fillet_rule import calculate_centroid
+from controllers.fillet_rule import calculate_centroid
 
 def direction_to_centroid(obs_grid):
     centroid = calculate_centroid(obs_grid, stigmergic = False)

@@ -1,17 +1,15 @@
-'''
-moving avg window - 30
-variance window - 15
-'''
 
 import numpy as np
 import pdb
-from wall_follow_controller import WallFollowController
-from angle_beam_controller import AngleBeamController
+from controllers.wall_follow_controller import WallFollowController
+from controllers.angle_beam_controller import AngleBeamController
+from controllers.circle_extrusion_controller import CircleExtrusionController
+from stable_baselines.common.vec_env import DummyVecEnv
 
 
-class P4Rule:
+class CircleRule:
 
-    def __init__(self, wall_follow_kwargs, angle_beam_kwargs, extrude_after_stop_time=10):
+    def __init__(self, wall_follow_kwargs, angle_beam_kwargs, circle_extrusion_kwargs, extrude_after_stop_time=10):
         self.n_agents = None
         self.deposition_action = None
         self.actions_list = None
@@ -19,6 +17,7 @@ class P4Rule:
         self.t = 0
         self.extrude_after_stop_time = extrude_after_stop_time
         self.extrude_after_stop_counter = None
+        self.max_t = None
 
         self.robot_state = None
 
@@ -28,6 +27,7 @@ class P4Rule:
         # init controller modules
         self.wall_follow_controller = WallFollowController(**wall_follow_kwargs)
         self.angle_beam_controller = AngleBeamController(**angle_beam_kwargs)
+        self.circle_extrusion_controller = CircleExtrusionController(**circle_extrusion_kwargs)
 
     def get_action(self, obs):
         """
@@ -44,6 +44,10 @@ class P4Rule:
             self.robot_state = np.zeros((self.n_agents,))
             self.n_corners = np.zeros((self.n_agents,))
             self.extrude_after_stop_counter = np.ones((self.n_agents,)) * self.extrude_after_stop_time
+            if type(self.env) is not DummyVecEnv:
+                self.max_t = self.env.max_episode_length
+            else:
+                self.max_t = self.env.get_attr("max_episode_length",0)[0]
 
         self.x = obs['x']
         #print('time: ', self.t)
@@ -52,29 +56,37 @@ class P4Rule:
         for i in range(self.n_agents):
 
             ############### WALLFOLLOW STATE ####################
-            if self.robot_state[i] == 0:
-                self.actions_list[i], self.deposition_action[i] = self.wall_follow_controller.get_action(obs, i)
+            # if self.robot_state[i] == 0:
+            #     self.actions_list[i], self.deposition_action[i] = self.wall_follow_controller.get_action(obs, i)
 
-                if self.wall_follow_controller.corner_counter[i] >= 1:
-                    self.wall_follow_controller.corner_counter[i] = 0
-                    self.robot_state[i] = 1
-                    if hasattr(self, 'env'):
-                        self.env.set_flag(self.x[i, 0], self.x[i, 1])
+            #     if self.wall_follow_controller.corner_counter[i] >= 1:
+            #         self.wall_follow_controller.corner_counter[i] = 0
+            #         self.robot_state[i] = 1
+            #         if hasattr(self, 'env'):
+            #             self.env.set_flag(self.x[i, 0], self.x[i, 1])
 
-            ############### ANGLE BEAM STATE ####################
-            if self.robot_state[i] == 1:  # ANGLE BEAM
-                self.actions_list[i], self.deposition_action[i] = self.angle_beam_controller.get_action(obs, i)
+            # ############### ANGLE BEAM STATE ####################
+            # if self.robot_state[i] == 1:  # ANGLE BEAM
+            #     self.actions_list[i], self.deposition_action[i] = self.angle_beam_controller.get_action(obs, i)
 
-                # if it is SECOND time turning, then change robot to wall follow state, increment number of corners
-                if self.angle_beam_controller.turn_counter[i] >= 2:
-                    self.angle_beam_controller.reset_agent_i(i)
-                    self.robot_state[i] = 0
-                    self.n_corners[i] += 1
-                    if hasattr(self, 'env'):
-                        self.env.set_flag(self.x[i, 0], self.x[i, 1])
+            #     # if it is SECOND time turning, then change robot to wall follow state, increment number of corners
+            #     if self.angle_beam_controller.turn_counter[i] >= 2:
+            #         self.angle_beam_controller.reset_agent_i(i)
+            #         self.robot_state[i] = 0
+            #         self.n_corners[i] += 1
+            #         if hasattr(self, 'env'):
+            #             self.env.set_flag(self.x[i, 0], self.x[i, 1])
+            
+            self.actions_list[i], self.deposition_action[i] = self.circle_extrusion_controller.get_action(obs, i)
+
+        if self.t > 0 and self.t%(np.floor(self.max_t/5)) == 0:
+            #import pdb; pdb.set_trace()
+            self.circle_extrusion_controller.radius=np.floor(0.75*self.circle_extrusion_controller.radius)
 
         self.t += 1
-        self.check_stop_position()
+        if self.t%10==0:
+            print(self.t)
+        #self.check_stop_position()
         return np.concatenate((np.array(self.actions_list), np.array(self.deposition_action).reshape(self.n_agents, 1)),
                               axis=1)
 
