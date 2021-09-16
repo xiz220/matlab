@@ -1,5 +1,5 @@
 import numpy as np
-from fillet_rule import calculate_centroid
+from controllers.fillet_rule import calculate_centroid
 from math import pi
 
 

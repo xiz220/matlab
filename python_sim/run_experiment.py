@@ -27,7 +27,7 @@ def main():
         rule_args = {}
 
     # import and create rule
-    rule_class = getattr(importlib.import_module(rule_cfg['rule_file']), rule_cfg['rule_name'])
+    rule_class = getattr(importlib.import_module('controllers.' + rule_cfg['rule_file']), rule_cfg['rule_name'])
     rule = rule_class(**rule_args)
 
     if args.test:  # live rendering
@@ -60,7 +60,8 @@ def main():
                 return gym.make('OccupancyGrid-v0', **env_cfg)
 
             env = DummyVecEnv([env_callable])
-
+            if rule_cfg['include_env']:
+                rule.set_env(env)
             render_model(rule, env,
                          video_folder=str(experiment_dir),
                          name_prefix='video',
@@ -70,6 +71,8 @@ def main():
         else: #IF NOT RECORDING:
             # create environment
             env = OccupancyGridEnv(**env_cfg)
+            if rule_cfg['include_env']:
+                rule.set_env(env)
             done = False
             if rule_cfg['include_env']:
                 rule.set_env(env)

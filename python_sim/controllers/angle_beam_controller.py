@@ -1,5 +1,5 @@
 import numpy as np
-from fillet_rule import calculate_centroid
+from controllers.fillet_rule import calculate_centroid
 
 
 def direction_to_centroid(obs_grid):
