@@ -7,7 +7,7 @@ from circle_extrusion_controller import CircleExtrusionController
 from stable_baselines.common.vec_env import DummyVecEnv
 
 
-class P4Rule:
+class CircleRule:
 
     def __init__(self, wall_follow_kwargs, angle_beam_kwargs, circle_extrusion_kwargs, extrude_after_stop_time=10):
         self.n_agents = None
