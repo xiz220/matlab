@@ -59,18 +59,20 @@ class CircleExtrusionController:
             self.robot_wise_radius[i] = radius - (dist_to_center/250)*(radius-10)
             
         elif(gradient_mode == 'time'):
-            if(self.robot_timer_counter[i]%100 == 0):
+            if(self.robot_timer_counter[i] > 0):
                 if(self.robot_wise_radius[i] <= self.radius*0.2):
                     self.robot_wise_radius[i] = int(self.radius*0.2)
                 else:
-                    self.robot_wise_radius[i] -= 1
+                    self.robot_wise_radius[i] = self.radius - int(self.robot_timer_counter[i]/400) #change this value to figit with it
                     
+                        
         elif(gradient_mode == 'circle_counter'):
-            if(self.circle_counter[i]%5 == 0):
+            if(self.count_circles[i] > 0):
                 if(self.robot_wise_radius[i] <= self.radius*0.2):
                     self.robot_wise_radius[i] = int(self.radius*0.2)
                 else:
-                    self.robot_wise_radius[i] -= 1
+                    self.robot_wise_radius[i] = self.radius - int(self.count_circles[i]/5) #change this value to figit
+                    #pdb.set_trace()
             
             
     def seek_material_func(self, i, x, total_density, direction_centroid):
@@ -154,7 +156,6 @@ class CircleExtrusionController:
             
             self.deposition_action = np.zeros((self.n_agents,))
             
-            self.circle_counter = np.zeros((self.n_agents,))
             self.robot_timer_counter = np.zeros((self.n_agents,))
             
         self.robot_timer_counter[i] += 1
@@ -216,7 +217,7 @@ class CircleExtrusionController:
         if ((self.stop[i] == 1) and (self.jump_delay[i] <= delay_time)):
             self.jump_delay[i] += 1
             self.circle_trajectory(i, x[i])
-            self.circle_counter[i] += 1
+            
             
         elif ((self.stop[i] == 1) and (self.jump_delay[i] <= delay_time+5)):
             self.jump_delay[i] += 1
