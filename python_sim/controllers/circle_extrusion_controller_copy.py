@@ -35,7 +35,7 @@ def check_density(obs_grid):
 class CircleExtrusionController:
     
     def __init__(self, line_length=10, slowdown_alpha=0.5, circle_radius=25, gradient_mode='distance',
-                 min_circle_radius=5,):
+                 min_circle_radius=5, distance_gradient_parameter=-0.1):
         self.n_agents = None
         self.deposition = None
         self.actions_list = None
@@ -50,15 +50,20 @@ class CircleExtrusionController:
         self.circle_timer = None
         self.vector_to_disturbance = None
         self.gradient_mode = gradient_mode
+        self.distance_gradient_parameter = distance_gradient_parameter
+        self.print_warning = True
         
     def update_robot_radius(self, i, x, gradient_mode, radius):
         
         if(gradient_mode == 'distance'):
             #self.robot_wise_radius[i] = self.radius
-            print("WARNING: assuming fixed environment size of 550 px on a side. todo generalize to other env sizes.")
+            if self.print_warning:
+                print("WARNING: assuming fixed environment size of 550 px on a side. todo generalize to other env sizes.")
+                self.print_warning=False
+
             dist_to_center = np.linalg.norm([275,275]-x)
-            self.robot_wise_radius[i] = radius - (dist_to_center/250)*(radius-10)
-            
+            self.robot_wise_radius[i] = min(max(self.min_circle_radius, self.radius + self.distance_gradient_parameter*dist_to_center), self.radius)
+
         elif(gradient_mode == 'time'):
             if(self.robot_timer_counter[i] > 0):
                 self.robot_wise_radius[i] = self.radius - int(self.robot_timer_counter[i]/400) #change this value to figit with it
