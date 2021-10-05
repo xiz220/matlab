@@ -47,6 +47,6 @@ With further details about installing in non-default folders [here](https://www.
 
 This is a little hacky, but what worked for me was to navigate to the root matlab directory, cd into `extern/engines/python`, and run
 
-```python setup.py build --build-base="lattice-venv-dir" install --prefix="lattice-venv-dir"```
-Where `lattice-venv-dir` is the directory for the conda environment. I then navigated to `lattice-venv-dir` and moved the matlab engine installation from a subfolder called `lib.linux-x86_64-2.7` (it will probably be different on your machine) into the main `lattice-venv-dir` by running the following from the main `lattice-venv-dir`:
+```python setup.py install --prefix="lattice-venv-dir"```
+Where `lattice-venv-dir` is the directory for the conda environment. Navigate to `lattice-venv-dir` and movedpy the matlab engine installation from a subfolder called `lib.linux-x86_64-2.7` (it will probably be different on your machine) into the main `lattice-venv-dir` by running the following from the main `lattice-venv-dir`:
 ```cp -r lib.linux-x86_64-2.7/matlab .```

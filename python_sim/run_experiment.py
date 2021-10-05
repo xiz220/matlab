@@ -15,6 +15,7 @@ def main():
     parser.add_argument('-exp_name', default=None, help='Experiment name')
     parser.add_argument('-cfg', default=None, nargs='+', help='Configuration file path')
     parser.add_argument('-no_record', action="store_true", default=False, help='Do not save a video -- only image')
+    parser.add_argument('-no_stiffness', action="store_true", default=False, help='Do not analyze structure')
     parser.add_argument('-test', action="store_true", default=False, help='Live render instead of saving video')
     args = parser.parse_args()
 
@@ -62,7 +63,7 @@ def main():
             env = DummyVecEnv([env_callable])
             if rule_cfg['include_env']:
                 rule.set_env(env)
-            render_model(rule, env,
+            filepath = render_model(rule, env,
                          video_folder=str(experiment_dir),
                          name_prefix='video',
                          n_episodes=1,
@@ -86,6 +87,18 @@ def main():
             occ = env.occupancy
             occ_display = (1 - ((occ == 1).astype('float') + 0.7 * (occ == 2).astype('float')))
             mpimg.imsave(str(filepath), occ_display, cmap="gray", origin='lower')
+
+
+        if not args.no_stiffness: #IF CALCULATING STIFFNESS
+            import matlab.engine
+            eng = matlab.engine.start_matlab()
+
+            stiffness = eng.calc_stiffness(str(filepath))
+
+            file = open(str(experiment_dir / 'stiffness.txt'), 'w')
+            file.write("stiffness: " + str(stiffness))
+            file.close()
+
 
 
 if __name__ == '__main__':
