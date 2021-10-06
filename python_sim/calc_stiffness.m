@@ -2,28 +2,42 @@ function stiffness = calc_stiffness(pixel_matrix_path)
     tic
     
     %
+    'FIRST'
     im_raw=imread(pixel_matrix_path); %%input pixel matrix
+    imshow(im_raw)
     x = double(rgb2gray(im_raw));
+
+    'SECOND'
     if ndims(x)==3
         x = x(:,:,1);
     end
-    
+    imshow(x)
+    'THIRD'
+    x(x<254) = 0;
+
     % trim empty edges:
     for i = 1:20
-        if sum(x(i,:)) == 0
+        if all(x(i,:) == 255)
             x(1,:) = [];
+            'TRIM BOTTOM'
         end
-        if sum(x(:,i)) == 0
+        if all(x(:,i) == 255)
             x(:,1) = [];
+            'TRIM LEFT'
         end
-        if sum(x(end,:)) == 0
+        if all(x(end,:) == 255)
             x(end,:) = [];
+            'TRIM TOP'
         end
-        if sum(x(:,end)) == 0
+        if all(x(:,end) == 255)
             x(:,end) = [];
+            'TRIM RIGHT'
         end
     end
-    [nelx, nely] = size(x);
+
+    x = (255-x)/255;
+    imshow(x)
+    [nely, nelx] = size(x)
     E0 = 10;
     Emin = 1e-9;
     nu = 0.3;
@@ -67,6 +81,7 @@ function stiffness = calc_stiffness(pixel_matrix_path)
 
     Mi_deformation=mean(deformation);
     toc
-    stiffness=-nelx/Mi_deformation;
+    imshow(x)
+    stiffness=[-nelx/Mi_deformation, sum(sum(x))/(nelx*nely)];
 
 end

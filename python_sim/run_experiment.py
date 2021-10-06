@@ -93,10 +93,12 @@ def main():
             import matlab.engine
             eng = matlab.engine.start_matlab()
 
-            stiffness = eng.calc_stiffness(str(filepath))
-
+            result = eng.calc_stiffness(str(filepath))
+            stiffness = result[0][0]
+            vol_frac = result[0][1]
             file = open(str(experiment_dir / 'stiffness.txt'), 'w')
-            file.write("stiffness: " + str(stiffness))
+            file.write("stiffness: " + str(stiffness) + '\n')
+            file.write("volume fraction: " + str(vol_frac))
             file.close()
 
 
