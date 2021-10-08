@@ -3,7 +3,7 @@ import numpy as np
 import pdb
 from controllers.wall_follow_controller import WallFollowController
 from controllers.angle_beam_controller import AngleBeamController
-from controllers.circle_extrusion_controller import CircleExtrusionController
+from controllers.circle_extrusion_controller_copy import CircleExtrusionController
 from stable_baselines.common.vec_env import DummyVecEnv
 
 
