@@ -35,7 +35,7 @@ def check_density(obs_grid):
 class CircleExtrusionController:
     
     def __init__(self, line_length=10, slowdown_alpha=0.5, circle_radius=25, gradient_mode='distance',
-                 min_circle_radius=5, distance_gradient_parameter=-0.1):
+                 min_circle_radius=5, distance_gradient_parameter=-0.1, stop_condition='standard'):
         self.n_agents = None
         self.deposition = None
         self.actions_list = None
@@ -52,6 +52,7 @@ class CircleExtrusionController:
         self.gradient_mode = gradient_mode
         self.distance_gradient_parameter = distance_gradient_parameter
         self.print_warning = True
+        self.stop_condition = stop_condition
         
     def update_robot_radius(self, i, x, gradient_mode, radius):
         
@@ -172,12 +173,18 @@ class CircleExtrusionController:
             self.robot_timer_counter = np.zeros((self.n_agents,))
 
             self.circle_start_delay_timer = np.zeros((self.n_agents,))
+            self.turn_off = np.zeros((self.n_agents,))
         self.robot_timer_counter[i] += 1
         
         x = obs['x']
                     
         obs = sensor_reading[i, :, :]
-        
+
+        if self.turn_off[i] == 1:
+            self.actions_list[i] = np.array([0,0])
+            self.deposition_action[i] = 0
+            return self.actions_list[i], self.deposition_action[i]
+
         direction_centroid = direction_to_centroid(obs)
         direction_centroid = np.append(direction_centroid, 0)
                   
@@ -243,16 +250,33 @@ class CircleExtrusionController:
             self.actions_list[i] = (-direction_centroid[0:2])*50
             self.deposition_action[i] = 0
             
-            
+
         ##making the bot jump big random steps for 15 steps so that the bot moves a bit farther from existing circle or wall    
-        if((self.stop[i] == 0) and (self.seek_material[i] == 0) and (self.circle_extrusion[i] == 0) and (self.random[i] <= 15)):
+        density_num_random_jumps = 100
+        normal_num_random_jumps = 15
+        if self.stop_condition=='density':
+            num_random_jumps = density_num_random_jumps
+        else:
+            num_random_jumps = normal_num_random_jumps
+
+        if((self.stop[i] == 0) and (self.seek_material[i] == 0) and (self.circle_extrusion[i] == 0) and (self.random[i] <= num_random_jumps)):
             self.random[i] += 1
             self.actions_list[i] = ((np.random.uniform(low = -1, high = 1, size = (2,)))*10)*20
             self.deposition_action[i] = 0
-        elif((self.stop[i] == 0) and (self.seek_material[i] == 0) and (self.circle_extrusion[i] == 0) and (self.random[i] > 15)):
+            #print('i: ',i,' d: ',total_density)
+            if total_density < 0.01: #if robot is in open space,
+                self.random[i] = 0
+                self.actions_list[i] = np.array([0,0])
+                self.deposition_action[i] = 0
+                self.seek_material[i] = 1
+                self.count_circles[i] += 1
+        elif((self.stop[i] == 0) and (self.seek_material[i] == 0) and (self.circle_extrusion[i] == 0) and (self.random[i] > num_random_jumps)):
             self.random[i] = 0
             self.actions_list[i] = np.array([0,0])
             self.deposition_action[i] = 0
+            if self.stop_condition=='density':
+                self.turn_off[i] = 1
+                print('TURNING OFF AGENT ',i, ' timestep ', self.t)
             self.seek_material[i] = 1
             self.count_circles[i] += 1  ##to keep count of number of circles extruded by each bot
              
