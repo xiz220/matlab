@@ -58,6 +58,9 @@ def render_model(rule, env, video_folder, name_prefix, n_episodes, save_image=Tr
                 print(f'Finished episode {count}.')
         video_env.close_video_recorder()
 
+        if save_image:
+            return filepath
+
 class CustomVecVideoRecoder(VecVideoRecorder):
     def __init__(self, venv, video_folder='/video', name_prefix='video'):
         """
