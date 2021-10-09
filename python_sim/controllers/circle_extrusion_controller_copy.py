@@ -4,6 +4,7 @@ import numpy as np
 #from math import pi
 import pdb
 from controllers.fillet_rule import calculate_centroid
+import random
 
 def direction_to_centroid(obs_grid):
     centroid = calculate_centroid(obs_grid, stigmergic = False)
@@ -34,7 +35,7 @@ def check_density(obs_grid):
 
 class CircleExtrusionController:
     
-    def __init__(self, line_length=10, slowdown_alpha=0.5, circle_radius=25, gradient_mode='distance'):
+    def __init__(self, line_length=10, slowdown_alpha=0.5, circle_radius=25, gradient_mode='distance', seed_flag = 1, num_seed_agents = 2):
         self.n_agents = None
         self.deposition = None
         self.actions_list = None
@@ -49,6 +50,8 @@ class CircleExtrusionController:
         self.circle_timer = None
         self.vector_to_disturbance = None
         self.gradient_mode = gradient_mode
+        self.seed = seed_flag
+        self.seed_agents = num_seed_agents
         
     def update_robot_radius(self, i, x, gradient_mode, radius):
         
@@ -56,7 +59,7 @@ class CircleExtrusionController:
             #self.robot_wise_radius[i] = self.radius
             dist_to_center = np.linalg.norm([275,275]-x)
             ##self.robot_wise_radius[i] = (1-np.min([(dist_to_center/300),0.9]))*self.init_radius
-            self.robot_wise_radius[i] = radius - (dist_to_center/250)*(radius-10)
+            self.robot_wise_radius[i] = radius - (dist_to_center/250)*(radius-15)
             
         elif(gradient_mode == 'time'):
             if(self.robot_timer_counter[i] > 0):
@@ -74,6 +77,15 @@ class CircleExtrusionController:
                     self.robot_wise_radius[i] = self.radius - int(self.count_circles[i]/5) #change this value to figit
                     #pdb.set_trace()
             
+    def calculate_radius(self, i, x, direction_centroid_norm):
+        present_position = x
+        present_position = np.append(present_position, 0)
+        centre = present_position + self.robot_wise_radius[i] * (-direction_centroid_norm)
+        self.circle_centre[i] = centre[0:2]
+        
+        #calculate how many steps the circle should take
+        n_circle_steps = np.floor((2*np.pi*self.robot_wise_radius[i])/self.slowdown_alpha)
+        self.circle_timer[i] = n_circle_steps
             
     def seek_material_func(self, i, x, total_density, direction_centroid):
                       
@@ -100,14 +112,8 @@ class CircleExtrusionController:
                     
                 self.update_robot_radius(i, x, self.gradient_mode, self.radius)
                 
-                present_position = x
-                present_position = np.append(present_position, 0)
-                centre = present_position + self.robot_wise_radius[i] * (-direction_centroid_norm)
-                self.circle_centre[i] = centre[0:2]
+                self.calculate_radius(i, x, direction_centroid_norm)
                 
-                #calculate how many steps the circle should take
-                n_circle_steps = np.floor((2*np.pi*self.robot_wise_radius[i])/self.slowdown_alpha)
-                self.circle_timer[i] = n_circle_steps
                 
     def circle_trajectory(self, i, x):
         vector_towards_centre = self.circle_centre[i] - x
@@ -124,7 +130,15 @@ class CircleExtrusionController:
         self.actions_list[i] = movement_norm[0:2]*10*self.slowdown_alpha
         self.deposition_action[i] = 1
         
-            
+    def take_no_action(self, i, x):
+        self.one_time = 0
+        self.circle_extrusion[i] = 0
+        self.seek_material[i] = 1
+        self.actions_list[i] = np.array([0,0])
+        self.deposition_action[i] = 0
+        
+        
+        
     def get_action(self, obs, i):
         
         sensor_reading = obs['sensor_readings']
@@ -157,6 +171,10 @@ class CircleExtrusionController:
             self.deposition_action = np.zeros((self.n_agents,))
             
             self.robot_timer_counter = np.zeros((self.n_agents,))
+            self.seed_bot_list = []
+            self.seed_counter = 0
+            self.one_time = 0
+            self.distance_from_centre = np.zeros((self.n_agents,))
             
         self.robot_timer_counter[i] += 1
         
@@ -170,10 +188,27 @@ class CircleExtrusionController:
         direction_centroid_norm = direction_centroid/np.linalg.norm(direction_centroid)
         
         total_density, density_ones, density_twos = check_density(obs)
-        
-        ##self.t incremented for debugging purposes
-        if (i == (self.n_agents - 1)):
-            self.t += 1
+        #one_time = 0
+        if((self.seed == 1) and (self.one_time == 0) and (self.t == self.n_agents)):
+            closest_index = self.distance_from_centre.argsort()
+            self.seed_bot_list = closest_index[0:self.seed_agents]
+            self.one_time += 1
+            self.seed_counter = self.seed_agents
+            #pdb.set_trace()
+            
+
+        if((self.seed_counter >= 0) and (self.t == self.n_agents) and (self.seed == 1)):
+           if((i == self.seed_bot_list).any()):
+                direction_centroid_norm = np.array([0, -1, 0])
+                self.calculate_radius(i, x[i], direction_centroid_norm)
+                self.seed_counter = self.seed_counter - 1
+                self.circle_extrusion[i] = 1
+                self.seek_material[i] = 0
+                
+            
+        # if(self.seed_counter == 0):
+        #     pdb.set_trace()
+            
         
         ##seek_material: check centroid distance from robot's current position to determine if it's close enough to the wall to 
         ##start circle extrusion
@@ -244,6 +279,13 @@ class CircleExtrusionController:
              
         self.previous_centroid[i] = direction_centroid[0:2]
         
+        
+        ##self.t incremented for debugging purposes
+        if (self.t < self.n_agents):
+            self.t += 1
+            self.take_no_action(i, x[i])
+            self.distance_from_centre[i] = np.linalg.norm([275,275]-x[i])
+            
         
         # if(self.t == 990):
         #     pdb.set_trace()
