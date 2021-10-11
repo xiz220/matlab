@@ -7,8 +7,8 @@ sensor_occ_radius = 75 #radius for the local occupancy grid sensor
 n_agents=12
 max_deposition_radius=70 #max distance from the robot that it can deposit material
 max_episode_length=500
-motion_model='unrestricted' #'unrestricted' or 'restricted' -- unrestricted means robots can travel through material
-                            # restricted means they cannot
+motion_model='unrestricted' #'unrestricted' or 'restricted' or 'slippery' -- unrestricted means robots can travel through material
+                            # restricted means they cannot, slippery means they slide along walls rather than passing throug
 
 [rule]
 rule_file = "proximity_rule"
