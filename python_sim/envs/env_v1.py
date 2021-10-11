@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import scipy.misc
+from scipy.spatial import distance_matrix
 from utils import rgb2gray, clean_file_name
 from os import path
 from pathlib import Path
@@ -215,9 +216,33 @@ class OccupancyGridEnv(gym.Env):
             if self.motion_model=='unrestricted':
                 if self.is_ob(candidate_state[i,0], candidate_state[i,1]):
                     candidate_state[i, :] = self.x[i, :]
+            if self.motion_model=='slippery':
+                if self.is_occupied(candidate_state[i, 0], candidate_state[i, 1]):
+                    candidate_state[i, :] = self.find_nearby(self.x[i,:], (1/self.image_scale)*movement_action[i,:])
+
 
         self.x = candidate_state
 
+    def find_nearby(self, old_pos, proposed_action):
+        candidate_state_list = []
+        ang = np.arctan2(proposed_action[1],proposed_action[0])
+        action_magnitude = np.linalg.norm(proposed_action)
+        # iterate through n_steps angles within
+        n_steps = 20
+        for i in range(-n_steps,n_steps):
+            proposed_ang = ang + i*np.pi/(n_steps*2)
+            candidate_state = old_pos + action_magnitude*np.array([np.cos(proposed_ang),np.sin(proposed_ang)])
+            if not self.is_occupied(candidate_state[0], candidate_state[1]):
+                candidate_state_list.append(candidate_state)
+
+        if len(candidate_state_list) > 0:
+            candidate_state_matrix = np.array(candidate_state_list)
+            #import pdb; pdb.set_trace()
+            candidate_state_dists = distance_matrix(np.reshape(candidate_state_matrix,(-1,2)),np.expand_dims(old_pos+proposed_action,axis=0))
+            min_ind = np.argmin(candidate_state_dists)
+            return candidate_state_matrix[min_ind,:]
+        else:
+            return old_pos
 
 
     def perform_deposition(self, deposition_action):
