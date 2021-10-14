@@ -2,18 +2,17 @@
 import numpy as np
 import pdb
 from stable_baselines.common.vec_env import DummyVecEnv
+from controllers.fillet_rule import calculate_centroid
 
 
 class BlobRule:
 
-    def __init__(self, wall_follow_kwargs, angle_beam_kwargs, circle_extrusion_kwargs, extrude_after_stop_time=10):
+    def __init__(self, blob_kwargs):
         self.n_agents = None
         self.deposition_action = None
         self.actions_list = None
         self.x = None
         self.t = 0
-        self.extrude_after_stop_time = extrude_after_stop_time
-        self.extrude_after_stop_counter = None
         self.max_t = None
 
         self.robot_state = None
@@ -22,9 +21,7 @@ class BlobRule:
         self.n_corners = None
 
         # init controller modules
-        self.wall_follow_controller = WallFollowController(**wall_follow_kwargs)
-        self.angle_beam_controller = AngleBeamController(**angle_beam_kwargs)
-        self.circle_extrusion_controller = CircleExtrusionController(**circle_extrusion_kwargs)
+        self.blob_controller = BlobController(**blob_kwargs)
 
     def get_action(self, obs):
         """
@@ -40,63 +37,20 @@ class BlobRule:
             self.actions_list = [np.zeros((2,)) for _ in range(self.n_agents)]
             self.robot_state = np.zeros((self.n_agents,))
             self.n_corners = np.zeros((self.n_agents,))
-            self.extrude_after_stop_counter = np.ones((self.n_agents,)) * self.extrude_after_stop_time
             if type(self.env) is not DummyVecEnv:
                 self.max_t = self.env.max_episode_length
             else:
                 self.max_t = self.env.get_attr("max_episode_length",0)[0]
 
         self.x = obs['x']
-        #print('time: ', self.t)
-        #print('state: ', self.robot_state)
-        #print(self.angle_beam_controller.turn_counter)
+
         for i in range(self.n_agents):
-
-            ############### WALLFOLLOW STATE ####################
-            # if self.robot_state[i] == 0:
-            #     self.actions_list[i], self.deposition_action[i] = self.wall_follow_controller.get_action(obs, i)
-
-            #     if self.wall_follow_controller.corner_counter[i] >= 1:
-            #         self.wall_follow_controller.corner_counter[i] = 0
-            #         self.robot_state[i] = 1
-            #         if hasattr(self, 'env'):
-            #             self.env.set_flag(self.x[i, 0], self.x[i, 1])
-
-            # ############### ANGLE BEAM STATE ####################
-            # if self.robot_state[i] == 1:  # ANGLE BEAM
-            #     self.actions_list[i], self.deposition_action[i] = self.angle_beam_controller.get_action(obs, i)
-
-            #     # if it is SECOND time turning, then change robot to wall follow state, increment number of corners
-            #     if self.angle_beam_controller.turn_counter[i] >= 2:
-            #         self.angle_beam_controller.reset_agent_i(i)
-            #         self.robot_state[i] = 0
-            #         self.n_corners[i] += 1
-            #         if hasattr(self, 'env'):
-            #             self.env.set_flag(self.x[i, 0], self.x[i, 1])
-            
-            self.actions_list[i], self.deposition_action[i] = self.circle_extrusion_controller.get_action(obs, i)
-
-        if self.t > 0 and self.t%(np.floor(self.max_t/5)) == 0:
-            #import pdb; pdb.set_trace()
-            self.circle_extrusion_controller.radius=np.floor(0.75*self.circle_extrusion_controller.radius)
-
-        self.t += 1
-        if self.t%10==0:
-            print(self.t)
-        #self.check_stop_position()
+            self.actions_list[i], self.deposition_action[i] = self.blob_controller.get_action(obs,i)
         return np.concatenate((np.array(self.actions_list), np.array(self.deposition_action).reshape(self.n_agents, 1)),
                               axis=1)
 
     def check_stop_position(self):
-        for i in range(self.n_agents):
-            if self.n_corners[i] >= 2:
-                self.actions_list[i] = np.array([0, 0])
-                if self.extrude_after_stop_counter[i] >= 8:
-                    self.deposition_action[i] = 0
-                else:
-                    self.deposition_action[i] = 1
-                    self.extrude_after_stop_counter[i] += 1
-        # print(self.n_corners) TODO: add in this print conditional on -test flag
+        pass
 
     def set_env(self, env):
         self.env = env
@@ -116,7 +70,7 @@ class BlobController:
     
 
     def get_action(self, obs, i):
-        sensor_reading = obs['sensor_readings']
+        sensor_reading = obs['sensor_readings'][i,:,:]
         if self.n_agents is None:
             self.n_agents = len(sensor_reading)
             self.deposition_action = np.zeros((self.n_agents,))
@@ -124,16 +78,53 @@ class BlobController:
             self.x = np.zeros((self.n_agents, 2))
             self.state = np.zeros((self.n_agents,))
             self.blob_radii = np.zeros((self.n_agents,))
+            self.deposition_counter = np.zeros((self.n_agents,))
 
         self.x = obs['x']
         
-        direction_centroid = direction_to_centroid(sensor_reading[i])
+        #direction_centroid = direction_to_centroid(sensor_reading[i])
         total_density = np.count_nonzero(sensor_reading) / sensor_reading.size
 
-        if self.state[i] == 0: #random movement state
-            if total_density == 0 or total_density == 1:
-                self.actions_list[i] = np.random.rand()
+        dist_to_center = np.linalg.norm(self.x-[275,275])
+        self.blob_radii[i] = np.max([3, 30-dist_to_center/10])
 
+        if self.state[i] == 0: #random movement state
+            if total_density == 0: #initialize deposition
+                self.actions_list[i] = np.array([0,0])
+                self.deposition_action[i] = 1
+                self.deposition_counter[i] = self.get_time_from_radius(self.blob_radii[i])
+                self.state[i] = 1 #set to DEPOSITION state
+            else:
+                self.actions_list[i] = (10*(np.random.rand(1,2)-0.5)).flatten()
+                self.deposition_action[i] = 0
+
+            # check if radius plus buffer is empty
+            for j in range(int(sensor_reading.shape[0]/2)):
+                start_ind = int(sensor_reading.shape[0]/2)-j
+                end_ind = int(sensor_reading.shape[0]/2)+j
+                obs_subset = sensor_reading[start_ind:end_ind+1, start_ind:end_ind+1]
+                if sum(sum(obs_subset)) == 0:
+                    if j > np.floor(self.blob_radii[i]*np.sqrt(2) + 3):
+                        # set to DEPOSITION state
+                        self.actions_list[i] = np.array([0, 0])
+                        self.deposition_action[i] = 1
+                        self.deposition_counter[i] = self.get_time_from_radius(self.blob_radii[i])
+                        self.state[i] = 1  # set to DEPOSITION state
+                else:
+                    break
+
+        elif self.state[i] == 1: #deposition state
+            self.actions_list[i] = np.array([0,0])
+            self.deposition_action[i] = 1
+            self.deposition_counter[i] -= 1
+            if self.deposition_counter[i] <= 0:
+                self.state[i] = 0 #set back to random walk
+
+        return (self.actions_list[i],self.deposition_action[i])
+
+    def get_time_from_radius(self, radius):
+        # returns estimate of time in PIXELS, TODO: adjust to take scale into account
+        return int(radius**2 * np.pi)
         
 def direction_to_centroid(obs_grid):
     '''
