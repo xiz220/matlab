@@ -5,7 +5,7 @@ sensor_model="update_sensor_reading_occupancy"
 sensor_occ_radius = 200 #radius for the local occupancy grid sensor
 n_agents=5
 max_deposition_radius=200 #max distance from the robot that it can deposit material
-max_episode_length=50000
+max_episode_length=150000
 motion_model='unrestricted' #'unrestricted' or 'restricted' -- unrestricted means robots can travel through material
                             # restricted means they cannot
 invert_env = true

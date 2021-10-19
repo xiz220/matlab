@@ -20,7 +20,8 @@ class OccupancyGridEnv(gym.Env):
                  sensor_occ_radius=3,
                  max_episode_length=500,
                  max_deposition_radius=1,
-                 motion_model='unrestricted'):
+                 motion_model='unrestricted',
+                 invert_env=False):
         self.image_scale = image_scale
         self.n_agents = n_agents
         self.max_episode_length = max_episode_length
@@ -28,6 +29,7 @@ class OccupancyGridEnv(gym.Env):
         self.fig = None
         self.agent_wise_done = np.zeros((self.n_agents,))
         self.agent_wise_idle_max = 5
+        self.invert_env = invert_env
 
         if lattice_img_path is not None:
             # get lattice image from file
@@ -71,6 +73,8 @@ class OccupancyGridEnv(gym.Env):
         dispersion_override = False
         x = []
         while num_agents < self.n_agents:
+            if dispersion_override_counter%100 == 0:
+                print(['init agent: ', self.n_agents, ' dispersion override in ', 1000-dispersion_override_counter])
             candidate_x = np.random.randint(0, self.occupancy.shape[1])
             candidate_y = np.random.randint(0, self.occupancy.shape[0])
             if not self.is_occupied(candidate_x, candidate_y):
@@ -166,7 +170,10 @@ class OccupancyGridEnv(gym.Env):
 
             # Add occupancy grid
             occ_data = (1-((self.occupancy==1).astype('float')+0.7*(self.occupancy==2).astype('float')))
-            self.occ_render = self.ax.imshow(occ_data, cmap='gray', vmin=0, vmax=1)
+            if self.invert_env:
+                self.occ_render = self.ax.imshow(1-occ_data, cmap='gray', vmin=0, vmax=1)
+            else:
+                self.occ_render = self.ax.imshow(occ_data, cmap='gray', vmin=0, vmax=1)
 
             # Draw scale line
             self.ax.plot([50, 50+1000/self.image_scale], [25,25])
@@ -180,6 +187,8 @@ class OccupancyGridEnv(gym.Env):
 
         # update occupancy grid
         occ_data = (1-((self.occupancy==1).astype('float')+0.7*(self.occupancy==2).astype('float')))
+        if self.invert_env:
+            occ_data = 1-occ_data
         self.occ_render.set_data(occ_data)
 
         if len(self.flags) > 0:
