@@ -41,7 +41,9 @@ class BlobRule:
                 self.max_t = self.env.max_episode_length
             else:
                 self.max_t = self.env.get_attr("max_episode_length",0)[0]
-
+        self.t += 1
+        if self.t % 10 == 0:
+            print(self.t)
         self.x = obs['x']
 
         for i in range(self.n_agents):
@@ -72,7 +74,7 @@ class BlobController:
     def get_action(self, obs, i):
         sensor_reading = obs['sensor_readings'][i,:,:]
         if self.n_agents is None:
-            self.n_agents = len(sensor_reading)
+            self.n_agents = len(obs['sensor_readings'])
             self.deposition_action = np.zeros((self.n_agents,))
             self.actions_list = [np.zeros((2,)) for _ in range(self.n_agents)]
             self.x = np.zeros((self.n_agents, 2))
@@ -85,17 +87,18 @@ class BlobController:
         #direction_centroid = direction_to_centroid(sensor_reading[i])
         total_density = np.count_nonzero(sensor_reading) / sensor_reading.size
 
-        dist_to_center = np.linalg.norm(self.x-[275,275])
+        dist_to_center = np.linalg.norm(self.x[i,:]-[275,275])
         self.blob_radii[i] = np.max([3, 30-dist_to_center/10])
-
+        #print('dist: ',dist_to_center, ' radius: ', self.blob_radii[i])
         if self.state[i] == 0: #random movement state
             if total_density == 0: #initialize deposition
                 self.actions_list[i] = np.array([0,0])
                 self.deposition_action[i] = 1
                 self.deposition_counter[i] = self.get_time_from_radius(self.blob_radii[i])
+                #print(["radius: ", self.blob_radii[i], " time: ", self.deposition_counter[i]])
                 self.state[i] = 1 #set to DEPOSITION state
             else:
-                self.actions_list[i] = (10*(np.random.rand(1,2)-0.5)).flatten()
+                self.actions_list[i] = (20*(np.random.rand(1,2)-0.5)).flatten()
                 self.deposition_action[i] = 0
 
             # check if radius plus buffer is empty
@@ -104,7 +107,7 @@ class BlobController:
                 end_ind = int(sensor_reading.shape[0]/2)+j
                 obs_subset = sensor_reading[start_ind:end_ind+1, start_ind:end_ind+1]
                 if sum(sum(obs_subset)) == 0:
-                    if j > np.floor(self.blob_radii[i]*np.sqrt(2) + 3):
+                    if j > np.floor(self.blob_radii[i]*np.sqrt(2) + 3*np.max([self.blob_radii[i]/8,1])):
                         # set to DEPOSITION state
                         self.actions_list[i] = np.array([0, 0])
                         self.deposition_action[i] = 1

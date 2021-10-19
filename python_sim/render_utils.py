@@ -53,6 +53,8 @@ def render_model(rule, env, video_folder, name_prefix, n_episodes, save_image=Tr
                 filepath, _ = clean_file_name('result.png', im_dir)
                 occ = video_env.get_attr('occupancy',0)[0]
                 occ_display = (1-((occ==1).astype('float')+0.7*(occ==2).astype('float')))
+                if video_env.get_attr('invert_env',0)[0]:
+                    occ_display = (1-(occ==0)).astype('float')
                 mpimg.imsave(str(filepath), occ_display, cmap="gray",origin='lower')
                 count = count + 1
                 print(f'Finished episode {count}.')
