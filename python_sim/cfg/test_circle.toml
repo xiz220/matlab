@@ -37,6 +37,7 @@ num_seed_agents = 1
 min_circle_radius=10 #minimum circle radius
 distance_gradient_parameter=-0.1
 gradient_mode='distance'
+stop_condition='standard' #other option is 'density'
 
 
 

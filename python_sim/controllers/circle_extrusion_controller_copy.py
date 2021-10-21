@@ -36,7 +36,7 @@ def check_density(obs_grid):
 class CircleExtrusionController:
 
     def __init__(self, line_length=10, slowdown_alpha=0.5, circle_radius=25, gradient_mode='distance',
-                 min_circle_radius=5, distance_gradient_parameter=-0.1, seed_flag = 1, num_seed_agents = 2):
+                 min_circle_radius=5, distance_gradient_parameter=-0.1, seed_flag = 1, num_seed_agents = 2, stop_condition='standard'):
 
         self.n_agents = None
         self.deposition = None
@@ -57,9 +57,18 @@ class CircleExtrusionController:
         self.distance_gradient_parameter = distance_gradient_parameter
         self.print_warning = True
 
+        self.stop_condition = stop_condition
+
         
     def update_robot_radius(self, i, x, gradient_mode, radius):
-        
+        '''
+        Arguments:
+            i: index of robot
+            x: current position of ith robot
+            gradient_mode: 'distance' - change radius based on distance from center
+            'time' - reduce radius of bot based on the time duration of experiment
+            'circle_counter' - reduce radius after every circle a bot extrudes
+        '''
         if(gradient_mode == 'distance'):
             
             if self.print_warning:
@@ -79,15 +88,18 @@ class CircleExtrusionController:
                     self.robot_wise_radius[i] = int(self.min_circle_radius)
 
                         
-        elif(gradient_mode == 'circle_counter'):
+        elif(gradient_mode == 'circle_counter'):    
 
             if(self.robot_wise_radius[i] <= self.radius*0.2):
                 self.robot_wise_radius[i] = int(self.radius*0.2)
             else:
-                self.robot_wise_radius[i] = self.radius - int(self.count_circles[i]/5) #change this value to figit
+                self.robot_wise_radius[i] = self.radius - 1 #change this value to figit
                     #pdb.set_trace()
             
     def calculate_radius(self, i, x, direction_centroid_norm):
+        '''
+        Calculate centre of circle for each bot.
+        '''
         present_position = x
         present_position = np.append(present_position, 0)
         centre = present_position + self.robot_wise_radius[i] * (-direction_centroid_norm)
@@ -97,6 +109,10 @@ class CircleExtrusionController:
         self.circle_timer[i] = n_circle_steps
 
     def seek_material_func(self, i, x, total_density, direction_centroid):
+        
+        '''
+        logic for bot to seek material (wall or circle)
+        '''
 
         direction_centroid_norm = direction_centroid/np.linalg.norm(direction_centroid)
         if self.circle_start_delay_timer[i]==0:
@@ -134,6 +150,9 @@ class CircleExtrusionController:
                 
         
     def circle_trajectory(self, i, x):
+        '''
+        logic for bot to move in a circular trajectory
+        '''
         vector_towards_centre = self.circle_centre[i] - x
         vector_towards_centre = np.append(vector_towards_centre, 0)
         movement_direction = np.cross(vector_towards_centre, self.z_vector)
@@ -149,6 +168,9 @@ class CircleExtrusionController:
         self.deposition_action[i] = 1
         
     def take_no_action(self, i, x):
+        '''
+        logic for bot to take no action and stay at current position
+        '''
         self.one_time = 0
         self.circle_extrusion[i] = 0
         self.seek_material[i] = 1
@@ -193,12 +215,19 @@ class CircleExtrusionController:
             
             self.circle_start_delay_timer = np.zeros((self.n_agents,))
 
+            self.turn_off = np.zeros((self.n_agents,))
+            
         self.robot_timer_counter[i] += 1
         
         x = obs['x']
                     
         obs = sensor_reading[i, :, :]
-        
+
+        if self.turn_off[i] == 1:
+            self.actions_list[i] = np.array([0,0])
+            self.deposition_action[i] = 0
+            return self.actions_list[i], self.deposition_action[i]
+
         direction_centroid = direction_to_centroid(obs)
         direction_centroid = np.append(direction_centroid, 0)
                   
@@ -206,7 +235,7 @@ class CircleExtrusionController:
         
         total_density, density_ones, density_twos = check_density(obs)
         #one_time = 0
-        if((self.seed == 1) and (self.one_time == 0) and (self.t == self.n_agents)):
+        if((self.seed == 1) and (self.one_time == 0) and (self.t == self.n_agents)):    ##logic to decide which bots will be seeds
             closest_index = self.distance_from_centre.argsort()
             self.seed_bot_list = closest_index[0:self.seed_agents]
             self.one_time += 1
@@ -214,7 +243,7 @@ class CircleExtrusionController:
             #pdb.set_trace()
             
 
-        if((self.seed_counter >= 0) and (self.t == self.n_agents) and (self.seed == 1)):
+        if((self.seed_counter >= 0) and (self.t == self.n_agents) and (self.seed == 1)):    ##determine radius of seeds and make them move in circular trajectory
            if((i == self.seed_bot_list).any()):
                 direction_centroid_norm = np.array([0, -1, 0])
                 self.calculate_radius(i, x[i], direction_centroid_norm)
@@ -225,13 +254,13 @@ class CircleExtrusionController:
         
         ##start circle extrusion
         if ((self.circle_extrusion[i] == 0) and (self.stop[i] == 0) and (self.seek_material[i] == 1)):
-     
+            ##seeking material mode of the bot
             self.seek_material_func(i, x[i], total_density, direction_centroid)
 
                 
         ##begin circle extrusion            
         if ((self.circle_extrusion[i] == 1) and (self.seek_material[i] == 0)):
-       
+            ##stop seeking material and move in circular trajectory
             self.circle_trajectory(i, x[i])
             
             self.circle_timer[i] -= 1
@@ -242,6 +271,7 @@ class CircleExtrusionController:
         
         ##This if statement takes care of the bot repeating circles or moving further into the wall
         if ((total_density > 0.75) and (self.circle_extrusion[i] == 1)):
+            ##check the density to make the bot stop
             self.stop[i] = 1
             self.jump_delay[i] = 50
 
@@ -276,16 +306,33 @@ class CircleExtrusionController:
             self.actions_list[i] = (-direction_centroid[0:2])*50
             self.deposition_action[i] = 0
             
-            
+
         ##making the bot jump big random steps for 15 steps so that the bot moves a bit farther from existing circle or wall    
-        if((self.stop[i] == 0) and (self.seek_material[i] == 0) and (self.circle_extrusion[i] == 0) and (self.random[i] <= 15)):
+        density_num_random_jumps = 100
+        normal_num_random_jumps = 15
+        if self.stop_condition=='density':
+            num_random_jumps = density_num_random_jumps
+        else:
+            num_random_jumps = normal_num_random_jumps
+
+        if((self.stop[i] == 0) and (self.seek_material[i] == 0) and (self.circle_extrusion[i] == 0) and (self.random[i] <= num_random_jumps)):
             self.random[i] += 1
             self.actions_list[i] = ((np.random.uniform(low = -1, high = 1, size = (2,)))*10)*20
             self.deposition_action[i] = 0
-        elif((self.stop[i] == 0) and (self.seek_material[i] == 0) and (self.circle_extrusion[i] == 0) and (self.random[i] > 15)):
+            #print('i: ',i,' d: ',total_density)
+            if total_density < 0.01: #if robot is in open space,
+                self.random[i] = 0
+                self.actions_list[i] = np.array([0,0])
+                self.deposition_action[i] = 0
+                self.seek_material[i] = 1
+                self.count_circles[i] += 1
+        elif((self.stop[i] == 0) and (self.seek_material[i] == 0) and (self.circle_extrusion[i] == 0) and (self.random[i] > num_random_jumps)):
             self.random[i] = 0
             self.actions_list[i] = np.array([0,0])
             self.deposition_action[i] = 0
+            if self.stop_condition=='density':
+                self.turn_off[i] = 1
+                print('TURNING OFF AGENT ',i, ' timestep ', self.t)
             self.seek_material[i] = 1
             self.count_circles[i] += 1  ##to keep count of number of circles extruded by each bot
              
