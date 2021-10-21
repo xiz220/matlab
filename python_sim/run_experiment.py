@@ -96,9 +96,11 @@ def main():
             result = eng.calc_stiffness(str(filepath))
             stiffness = result[0][0]
             vol_frac = result[0][1]
+            HS_bound = (10*vol_frac)/(1 + 2*(1-vol_frac))
             file = open(str(experiment_dir / 'stiffness.txt'), 'w')
             file.write("stiffness: " + str(stiffness) + '\n')
-            file.write("volume fraction: " + str(vol_frac))
+            file.write("volume fraction: " + str(vol_frac) + '\n')
+            file.write("HS Bound: " + str(HS_bound))
             file.close()
 
 
