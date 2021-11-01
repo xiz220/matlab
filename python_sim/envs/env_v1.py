@@ -308,6 +308,9 @@ class OccupancyGridEnv(gym.Env):
 
         self.sensor_reading = np.array(sensor_reading)
 
+    def update_sensor_reading_none(self):
+        self.sensor_reading = np.array([0])
+
     def create_occupancy_from_img(self, img):
         occupancy_map = rgb2gray(img)
         occupancy_map = np.where(occupancy_map < 0.5, 1, 0)
