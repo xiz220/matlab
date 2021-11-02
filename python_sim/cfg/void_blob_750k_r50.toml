@@ -1,0 +1,22 @@
+[env]
+lattice_img_path='images/square_empty_noborder.png'
+image_scale=10 #number of microns per pixel
+sensor_model="update_sensor_reading_occupancy"
+sensor_occ_radius = 200 #radius for the local occupancy grid sensor
+n_agents=5
+max_deposition_radius=200 #max distance from the robot that it can deposit material
+max_episode_length=500000
+motion_model='unrestricted' #'unrestricted' or 'restricted' -- unrestricted means robots can travel through material
+                            # restricted means they cannot
+invert_env = true
+
+[rule]
+rule_file = "blob_rule"
+rule_name = "BlobRule"
+include_env = true
+
+
+[rule_args.blob_kwargs]
+
+
+

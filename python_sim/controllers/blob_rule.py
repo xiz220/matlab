@@ -60,10 +60,11 @@ class BlobRule:
 
 class BlobController:
 
-    def __init__(self):
+    def __init__(self,max_radius=30):
         self.n_agents = None
         self.t = None
         self.state = None
+        self.max_blob_radius = max_radius
         self.blob_radii = None
         self.actions_list = None
         self.deposition_action = None
@@ -88,7 +89,7 @@ class BlobController:
         total_density = np.count_nonzero(sensor_reading) / sensor_reading.size
 
         dist_to_center = np.linalg.norm(self.x[i,:]-[275,275])
-        self.blob_radii[i] = np.max([3, 30-dist_to_center/10])
+        self.blob_radii[i] = np.max([3, self.max_blob_radius-dist_to_center/10])
         #print('dist: ',dist_to_center, ' radius: ', self.blob_radii[i])
         if self.state[i] == 0: #random movement state
             if total_density == 0: #initialize deposition
