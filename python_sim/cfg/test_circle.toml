@@ -1,11 +1,11 @@
 [env]
-lattice_img_path='images/square_empty_island_9b.png'
+lattice_img_path='images/square_empty.png'
 image_scale=10 #number of microns per pixel
 sensor_model="update_sensor_reading_occupancy"
 sensor_occ_radius = 75 #radius for the local occupancy grid sensor
-n_agents=25
+n_agents=50
 max_deposition_radius=1000 #max distance from the robot that it can deposit material
-max_episode_length=8000
+max_episode_length=30000
 motion_model='unrestricted' #'unrestricted' or 'restricted' -- unrestricted means robots can travel through material
                             # restricted means they cannot
 
@@ -31,10 +31,13 @@ angle=45
 
 [rule_args.circle_extrusion_kwargs]
 slowdown_alpha=0.75
-circle_radius=35 #initial/baseline circle radius
+circle_radius=35
+seed_flag = 0
+num_seed_agents = 1
 min_circle_radius=10 #minimum circle radius
 distance_gradient_parameter=-0.1
 gradient_mode='distance'
+stop_condition='standard' #other option is 'density'
 
 
 
